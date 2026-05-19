@@ -1,0 +1,48 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Testing
+coverage/
+
+# Next.js
+.next/
+out/
+next-env.d.ts
+
+# Production
+build/
+dist/
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Local env
+.env
+.env.local
+.env*.local
+
+# OS
+.DS_Store
+*.pem
+
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# TypeScript
+*.tsbuildinfo
+
+# Claude Code
+.mcp.json
+.claude/
+
+# Docker
+docker/postgres-data/
+
+# Uploaded files (dev)
+uploads/

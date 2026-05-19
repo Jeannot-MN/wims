@@ -1,0 +1,40 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: wims-postgres
+    environment:
+      POSTGRES_USER: wims
+      POSTGRES_PASSWORD: wims
+      POSTGRES_DB: wims
+    ports:
+      - "55432:5432"
+    volumes:
+      - wims_postgres_data:/var/lib/postgresql/data
+      - ./docker/postgres-init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U wims"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: wims-app
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://wims:wims@postgres:5432/wims
+      TEST_DATABASE_URL: postgres://wims:wims@postgres:5432/wims_test
+      JWT_SECRET: ${JWT_SECRET:-dev-only-do-not-use-in-prod-replace-me}
+      APP_BASE_URL: http://localhost:3000
+      NODE_ENV: production
+    ports:
+      - "3000:3000"
+    profiles:
+      - full
+
+volumes:
+  wims_postgres_data:

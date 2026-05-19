@@ -1,0 +1,54 @@
+{
+  "name": "wims",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "migration:generate": "node --env-file=.env --no-warnings ./node_modules/typeorm/cli-ts-node-commonjs.js migration:generate -d src/infrastructure/db/datasource.ts",
+    "migration:run": "node --env-file=.env --no-warnings ./node_modules/typeorm/cli-ts-node-commonjs.js migration:run -d src/infrastructure/db/datasource.ts",
+    "migration:revert": "node --env-file=.env --no-warnings ./node_modules/typeorm/cli-ts-node-commonjs.js migration:revert -d src/infrastructure/db/datasource.ts",
+    "migration:create": "typeorm-ts-node-commonjs migration:create",
+    "db:setup": "npm run migration:run && DATABASE_URL=\"$(grep ^TEST_DATABASE_URL .env | cut -d= -f2-)\" node --env-file=.env --no-warnings ./node_modules/typeorm/cli-ts-node-commonjs.js migration:run -d src/infrastructure/db/datasource.ts"
+  },
+  "dependencies": {
+    "@node-rs/argon2": "^2.0.2",
+    "@pothos/core": "^4.3.0",
+    "@react-pdf/renderer": "^3.4.5",
+    "graphql": "^16.9.0",
+    "graphql-yoga": "^5.10.4",
+    "jsonwebtoken": "^9.0.2",
+    "next": "^14.2.35",
+    "pg": "^8.13.1",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "reflect-metadata": "^0.2.2",
+    "typeorm": "^0.3.20",
+    "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/jsonwebtoken": "^9.0.7",
+    "@types/node": "^22.9.0",
+    "@types/pg": "^8.11.10",
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "@vitest/coverage-v8": "^2.1.5",
+    "autoprefixer": "^10.4.20",
+    "eslint": "^8.57.1",
+    "eslint-config-next": "^14.2.35",
+    "postcss": "^8.4.49",
+    "tailwindcss": "^3.4.15",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.6.3",
+    "vitest": "^2.1.5"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}
