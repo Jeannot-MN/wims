@@ -89,6 +89,16 @@ export function EventDetailClient({ id }: { id: string }) {
         <Link className="btn-primary" href={`/dashboard/events/${id}/invitees`}>Manage invitees</Link>
       </section>
 
+      <section className="card flex items-center justify-between">
+        <div>
+          <h2 className="font-display text-xl mb-1">RSVP details</h2>
+          <p className="text-ink/60 text-sm">
+            Dietary requirements, song requests, and who needs help with accommodation.
+          </p>
+        </div>
+        <Link className="btn-secondary" href={`/dashboard/events/${id}/rsvps`}>View details</Link>
+      </section>
+
       <section className="card">
         <h2 className="font-display text-xl mb-3">Event details</h2>
         <dl className="grid grid-cols-2 gap-3 text-sm">

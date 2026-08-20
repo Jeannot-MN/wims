@@ -33,6 +33,8 @@ export type InviteeListItem = {
 export type InviteeListFilter = {
   status?: RsvpStatus | "all";
   search?: string;
+  accommodation?: "yes" | "no";
+  has_dietary?: boolean;
   sort?: "name" | "status" | "submitted_at" | "created_at";
   direction?: "asc" | "desc";
 };
@@ -78,6 +80,15 @@ export class DashboardQueryService {
         { q: `%${filter.search.toLowerCase()}%` },
       );
     }
+    if (filter.accommodation === "yes") {
+      qb.andWhere("COALESCE(r.accommodation_needed, false) = true");
+    }
+    if (filter.accommodation === "no") {
+      qb.andWhere("COALESCE(r.accommodation_needed, false) = false");
+    }
+    if (filter.has_dietary) {
+      qb.andWhere("COALESCE(r.dietary_restrictions, '') <> ''");
+    }
     const direction = (filter.direction ?? "asc").toUpperCase() as "ASC" | "DESC";
     switch (filter.sort) {
       case "status":
@@ -115,8 +126,12 @@ export class DashboardQueryService {
     });
   }
 
-  async exportXlsx(ownerId: string, eventId: string): Promise<{ filename: string; base64: string }> {
-    const items = await this.list(ownerId, eventId);
+  async exportXlsx(
+    ownerId: string,
+    eventId: string,
+    filter: InviteeListFilter = {},
+  ): Promise<{ filename: string; base64: string }> {
+    const items = await this.list(ownerId, eventId, filter);
     const rows = items.map((i) => ({
       first_name: i.primary_first_name,
       last_name: i.primary_last_name,

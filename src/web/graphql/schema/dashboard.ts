@@ -5,9 +5,46 @@ import { requireAuth } from "../utils/require-auth";
 import {
   DashboardQueryService,
   type DashboardStats,
+  type InviteeListFilter,
   type InviteeListItem,
 } from "@/application/services/dashboard-query-service";
+import type { RsvpStatus } from "@/infrastructure/db/entities/Rsvp";
 import { ForbiddenError, NotFoundError } from "@/application/services/event-service";
+
+const STATUSES = ["all", "pending", "accepted", "declined", "maybe"] as const;
+const ACCOMMODATIONS = ["yes", "no"] as const;
+
+function badInput(message: string): never {
+  throw new GraphQLError(message, { extensions: { code: "BAD_INPUT" } });
+}
+
+type FilterArgs = {
+  status?: string | null;
+  search?: string | null;
+  accommodation?: string | null;
+  hasDietary?: boolean | null;
+};
+
+/**
+ * Shared by eventInviteesList and exportInvitees so the export always narrows to
+ * exactly what the host is looking at. Unknown values fail loudly — silently
+ * returning zero rows is indistinguishable from "nobody matched".
+ */
+function parseFilter(args: FilterArgs): InviteeListFilter {
+  const { status, accommodation } = args;
+  if (status != null && !STATUSES.includes(status as (typeof STATUSES)[number])) {
+    badInput(`Unknown status "${status}"`);
+  }
+  if (accommodation != null && !ACCOMMODATIONS.includes(accommodation as (typeof ACCOMMODATIONS)[number])) {
+    badInput(`Unknown accommodation filter "${accommodation}"`);
+  }
+  return {
+    status: (status as RsvpStatus | "all" | null) ?? undefined,
+    search: args.search ?? undefined,
+    accommodation: (accommodation as "yes" | "no" | null) ?? undefined,
+    has_dietary: args.hasDietary ?? undefined,
+  };
+}
 
 function mapErr(err: unknown): never {
   if (err instanceof NotFoundError) {
@@ -87,6 +124,8 @@ builder.queryField("eventInviteesList", (t) =>
       eventId: t.arg.id({ required: true }),
       status: t.arg.string({ required: false }),
       search: t.arg.string({ required: false }),
+      accommodation: t.arg.string({ required: false }),
+      hasDietary: t.arg.boolean({ required: false }),
       sort: t.arg.string({ required: false }),
       direction: t.arg.string({ required: false }),
     },
@@ -95,8 +134,7 @@ builder.queryField("eventInviteesList", (t) =>
         const user = requireAuth(ctx);
         try {
           return await new DashboardQueryService(ctx.dataSource).list(user.id, String(args.eventId), {
-            status: args.status as "all" | undefined,
-            search: args.search ?? undefined,
+            ...parseFilter(args),
             sort: args.sort as "name" | undefined,
             direction: args.direction as "asc" | "desc" | undefined,
           });
@@ -110,12 +148,22 @@ builder.queryField("eventInviteesList", (t) =>
 builder.mutationField("exportInvitees", (t) =>
   t.field({
     type: ExportPayload,
-    args: { eventId: t.arg.id({ required: true }) },
+    args: {
+      eventId: t.arg.id({ required: true }),
+      status: t.arg.string({ required: false }),
+      search: t.arg.string({ required: false }),
+      accommodation: t.arg.string({ required: false }),
+      hasDietary: t.arg.boolean({ required: false }),
+    },
     resolve: (_root, args, ctx) =>
       wrap(async () => {
         const user = requireAuth(ctx);
         try {
-          return await new DashboardQueryService(ctx.dataSource).exportXlsx(user.id, String(args.eventId));
+          return await new DashboardQueryService(ctx.dataSource).exportXlsx(
+            user.id,
+            String(args.eventId),
+            parseFilter(args),
+          );
         } catch (err) {
           mapErr(err);
         }

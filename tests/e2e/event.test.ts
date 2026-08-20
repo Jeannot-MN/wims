@@ -2,6 +2,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { resetDatabase, setupDatabase, teardownDatabase } from "../helpers/test-db";
 import { expectOk, runQuery } from "../helpers/gql";
 import { CapturingEmailService } from "../helpers/email-capture";
+import { futureEventStart } from "../helpers/dates";
 
 const email = new CapturingEmailService();
 const CTX = { email };
@@ -52,8 +53,10 @@ describe("Phase 3 — events", () => {
 
   it("creates and reads an event with all extras", async () => {
     const me = await createUser("host@example.com");
-    const starts = new Date("2026-09-15T15:00:00Z").toISOString();
-    const ends = new Date("2026-09-15T22:00:00Z").toISOString();
+    // Must stay ahead of the default RSVP deadline — this test asserts is_rsvp_closed is false.
+    const start = futureEventStart();
+    const starts = start.toISOString();
+    const ends = new Date(start.getTime() + 7 * 60 * 60 * 1000).toISOString();
     const r = await runQuery<{ createEvent: { id: string; title: string; is_rsvp_closed: boolean } }>(
       CREATE_EVENT,
       {

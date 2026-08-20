@@ -10,6 +10,7 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
+    "fonts:build": "node scripts/generate-font-modules.mjs",
     "migration:generate": "node --env-file=.env --no-warnings ./node_modules/typeorm/cli-ts-node-commonjs.js migration:generate -d src/infrastructure/db/datasource.ts",
     "migration:run": "node --env-file=.env --no-warnings ./node_modules/typeorm/cli-ts-node-commonjs.js migration:run -d src/infrastructure/db/datasource.ts",
     "migration:revert": "node --env-file=.env --no-warnings ./node_modules/typeorm/cli-ts-node-commonjs.js migration:revert -d src/infrastructure/db/datasource.ts",

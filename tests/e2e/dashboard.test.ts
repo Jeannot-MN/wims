@@ -3,6 +3,7 @@ import * as XLSX from "xlsx";
 import { resetDatabase, setupDatabase, teardownDatabase } from "../helpers/test-db";
 import { expectOk, runQuery } from "../helpers/gql";
 import { CapturingEmailService } from "../helpers/email-capture";
+import { futureEventStart } from "../helpers/dates";
 import { resetRsvpRateLimit } from "@/application/services/rsvp-service";
 
 const email = new CapturingEmailService();
@@ -15,12 +16,15 @@ const CREATE_EVENT = `mutation Create($input: EventCreateInput!) { createEvent(i
 const ADD_INVITEE = `mutation Add($eventId: ID!, $input: InviteeInput!) { addInvitee(eventId: $eventId, input: $input) { invite_token } }`;
 const SUBMIT = `mutation Sub($token: String!, $input: SubmitRsvpInput!) { submitRsvp(token: $token, input: $input) { rsvp { status } } }`;
 const STATS = `query S($eventId: ID!) { eventDashboardStats(eventId: $eventId) { total accepted declined maybe pending } }`;
-const LIST = `query L($eventId: ID!, $status: String, $search: String, $sort: String, $direction: String) {
-  eventInviteesList(eventId: $eventId, status: $status, search: $search, sort: $sort, direction: $direction) {
+const LIST = `query L($eventId: ID!, $status: String, $search: String, $sort: String, $direction: String, $accommodation: String, $hasDietary: Boolean) {
+  eventInviteesList(eventId: $eventId, status: $status, search: $search, sort: $sort, direction: $direction, accommodation: $accommodation, hasDietary: $hasDietary) {
     id primary_first_name primary_last_name rsvp_status email
+    dietary_restrictions song_requests accommodation_needed
   }
 }`;
-const EXPORT = `mutation E($eventId: ID!) { exportInvitees(eventId: $eventId) { filename base64 } }`;
+const EXPORT = `mutation E($eventId: ID!, $status: String, $accommodation: String) {
+  exportInvitees(eventId: $eventId, status: $status, accommodation: $accommodation) { filename base64 }
+}`;
 
 async function setupHostWithRsvps() {
   await runQuery(SIGNUP, { variables: { email: "dash@example.com", password: "supersecret1" }, context: CTX });
@@ -32,17 +36,20 @@ async function setupHostWithRsvps() {
   });
   const token = expectOk(login).login.token;
   const evt = await runQuery<{ createEvent: { id: string } }>(CREATE_EVENT, {
-    variables: { input: { title: "T", starts_at: new Date("2026-09-15T15:00:00Z").toISOString() } },
+    variables: { input: { title: "T", starts_at: futureEventStart().toISOString() } },
     authToken: token,
     context: CTX,
   });
   const eventId = expectOk(evt).createEvent.id;
 
-  const people = [
-    { first: "Alice", last: "Smith", email: "alice@a.com", status: "accepted" },
-    { first: "Bob", last: "Jones", email: "bob@b.com", status: "accepted" },
+  const people: {
+    first: string; last: string; email: string; status: string | null;
+    dietary?: string; song?: string; accommodation?: boolean;
+  }[] = [
+    { first: "Alice", last: "Smith", email: "alice@a.com", status: "accepted", dietary: "vegetarian", accommodation: true },
+    { first: "Bob", last: "Jones", email: "bob@b.com", status: "accepted", song: "Africa - Toto" },
     { first: "Carol", last: "Brown", email: "carol@c.com", status: "declined" },
-    { first: "Dave", last: "Adams", email: "dave@d.com", status: "maybe" },
+    { first: "Dave", last: "Adams", email: "dave@d.com", status: "maybe", accommodation: true },
     { first: "Eve", last: "Zeta", email: "eve@e.com", status: null }, // pending
   ];
 
@@ -61,13 +68,20 @@ async function setupHostWithRsvps() {
       context: CTX,
     });
     if (p.status) {
-      await runQuery(SUBMIT, {
+      // expectOk, not a bare runQuery — a rejected submit would otherwise leave
+      // every RSVP pending and surface as a baffling assertion failure later.
+      expectOk(await runQuery(SUBMIT, {
         variables: {
           token: expectOk(inv).addInvitee.invite_token,
-          input: { status: p.status },
+          input: {
+            status: p.status,
+            dietary_restrictions: p.dietary ?? "",
+            song_requests: p.song ?? "",
+            accommodation_needed: p.accommodation ?? false,
+          },
         },
         context: CTX,
-      });
+      }));
     }
   }
   return { token, eventId };
@@ -135,6 +149,98 @@ describe("Phase 10 — dashboard + export", () => {
     expect(last).toEqual(["Adams", "Brown", "Jones", "Smith", "Zeta"]);
   });
 
+  it("returns the RSVP extras for each invitee", async () => {
+    const h = await setupHostWithRsvps();
+    const r = await runQuery<{
+      eventInviteesList: {
+        primary_first_name: string;
+        dietary_restrictions: string;
+        song_requests: string;
+        accommodation_needed: boolean;
+      }[];
+    }>(LIST, { variables: { eventId: h.eventId }, authToken: h.token, context: CTX });
+    const byName = new Map(expectOk(r).eventInviteesList.map((i) => [i.primary_first_name, i]));
+
+    expect(byName.get("Alice")).toMatchObject({
+      dietary_restrictions: "vegetarian",
+      song_requests: "",
+      accommodation_needed: true,
+    });
+    expect(byName.get("Bob")).toMatchObject({
+      dietary_restrictions: "",
+      song_requests: "Africa - Toto",
+      accommodation_needed: false,
+    });
+    // Eve never responded — the extras default rather than coming back null.
+    expect(byName.get("Eve")).toMatchObject({
+      dietary_restrictions: "",
+      song_requests: "",
+      accommodation_needed: false,
+    });
+  });
+
+  it("filters by accommodation", async () => {
+    const h = await setupHostWithRsvps();
+    const needsHelp = await runQuery<{ eventInviteesList: { primary_first_name: string }[] }>(LIST, {
+      variables: { eventId: h.eventId, accommodation: "yes" },
+      authToken: h.token,
+      context: CTX,
+    });
+    expect(expectOk(needsHelp).eventInviteesList.map((i) => i.primary_first_name).sort()).toEqual([
+      "Alice",
+      "Dave",
+    ]);
+
+    const noHelp = await runQuery<{ eventInviteesList: { primary_first_name: string }[] }>(LIST, {
+      variables: { eventId: h.eventId, accommodation: "no" },
+      authToken: h.token,
+      context: CTX,
+    });
+    expect(expectOk(noHelp).eventInviteesList.map((i) => i.primary_first_name).sort()).toEqual([
+      "Bob",
+      "Carol",
+      "Eve",
+    ]);
+  });
+
+  it("filters by having dietary notes", async () => {
+    const h = await setupHostWithRsvps();
+    const r = await runQuery<{ eventInviteesList: { primary_first_name: string }[] }>(LIST, {
+      variables: { eventId: h.eventId, hasDietary: true },
+      authToken: h.token,
+      context: CTX,
+    });
+    expect(expectOk(r).eventInviteesList.map((i) => i.primary_first_name)).toEqual(["Alice"]);
+  });
+
+  it("combines the accommodation and status filters", async () => {
+    const h = await setupHostWithRsvps();
+    const r = await runQuery<{ eventInviteesList: { primary_first_name: string }[] }>(LIST, {
+      variables: { eventId: h.eventId, accommodation: "yes", status: "accepted" },
+      authToken: h.token,
+      context: CTX,
+    });
+    // Dave also needs help but is a "maybe", so both clauses must apply.
+    expect(expectOk(r).eventInviteesList.map((i) => i.primary_first_name)).toEqual(["Alice"]);
+  });
+
+  it("rejects unknown filter values instead of returning nothing", async () => {
+    const h = await setupHostWithRsvps();
+    const badStatus = await runQuery(LIST, {
+      variables: { eventId: h.eventId, status: "attending" },
+      authToken: h.token,
+      context: CTX,
+    });
+    expect(badStatus.errors?.[0]?.message).toMatch(/unknown status/i);
+
+    const badAccommodation = await runQuery(LIST, {
+      variables: { eventId: h.eventId, accommodation: "true" },
+      authToken: h.token,
+      context: CTX,
+    });
+    expect(badAccommodation.errors?.[0]?.message).toMatch(/unknown accommodation/i);
+  });
+
   it("exports an XLSX file with the right rows", async () => {
     const h = await setupHostWithRsvps();
     const r = await runQuery<{ exportInvitees: { filename: string; base64: string } }>(EXPORT, {
@@ -151,5 +257,21 @@ describe("Phase 10 — dashboard + export", () => {
     const rows = XLSX.utils.sheet_to_json<Record<string, string>>(sheet);
     expect(rows).toHaveLength(5);
     expect(rows.some((r) => r["first_name"] === "Alice" && r["status"] === "accepted")).toBe(true);
+  });
+
+  it("exports only the rows matching the applied filter", async () => {
+    const h = await setupHostWithRsvps();
+    const r = await runQuery<{ exportInvitees: { base64: string } }>(EXPORT, {
+      variables: { eventId: h.eventId, accommodation: "yes" },
+      authToken: h.token,
+      context: CTX,
+    });
+    const wb = XLSX.read(Buffer.from(expectOk(r).exportInvitees.base64, "base64"));
+    const rows = XLSX.utils.sheet_to_json<Record<string, string>>(wb.Sheets[wb.SheetNames[0]!]!);
+
+    expect(rows.map((row) => row["first_name"]).sort()).toEqual(["Alice", "Dave"]);
+    const alice = rows.find((row) => row["first_name"] === "Alice")!;
+    expect(alice["dietary_restrictions"]).toBe("vegetarian");
+    expect(alice["accommodation_needed"]).toBe("yes");
   });
 });

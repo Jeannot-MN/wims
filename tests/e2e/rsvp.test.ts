@@ -2,6 +2,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { resetDatabase, setupDatabase, teardownDatabase } from "../helpers/test-db";
 import { expectOk, runQuery } from "../helpers/gql";
 import { CapturingEmailService } from "../helpers/email-capture";
+import { futureEventStart } from "../helpers/dates";
 import { resetRsvpRateLimit } from "@/application/services/rsvp-service";
 
 const email = new CapturingEmailService();
@@ -45,7 +46,7 @@ async function setupInviteeFor(addr: string, deadline?: string, partner?: { firs
     variables: {
       input: {
         title: "Wedding",
-        starts_at: new Date("2026-09-15T15:00:00Z").toISOString(),
+        starts_at: futureEventStart().toISOString(),
         rsvp_deadline_at: deadline ?? null,
       },
     },

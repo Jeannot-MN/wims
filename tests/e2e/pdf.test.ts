@@ -41,7 +41,14 @@ describe("Phase 11 — PDF", () => {
           starts_at: new Date("2026-09-15T15:00:00Z").toISOString(),
           location: { address_text: "Cape Town", latitude: -33.92, longitude: 18.42 },
           dress_code: "Black tie",
-          schedule: [{ time: "15:00", title: "Ceremony", description: "" }],
+          schedule: [
+            { time: "15:00", title: "Ceremony", description: "St George's Cathedral\n5 Wale Street, Cape Town" },
+            { time: "18:30", title: "Reception", description: "Kirstenbosch Garden\nRhodes Drive, Newlands" },
+          ],
+          custom_sections: [
+            { heading: "Gifts", body: "Envelopes are our preferred gift.\nBank: FNB\nAccount Number: 6312 5399 443" },
+            { heading: "", body: "Regrettably no children." },
+          ],
         },
       },
       authToken: token,
@@ -70,6 +77,8 @@ describe("Phase 11 — PDF", () => {
     expect(buf.length).toBeGreaterThan(1000);
     // PDF files always start with %PDF
     expect(buf.subarray(0, 4).toString()).toBe("%PDF");
+    // Front panel + details panel, all the way through GraphQL → service → renderer.
+    expect(buf.toString("latin1")).toMatch(/\/Count\s+2/);
   });
 
   it("rejects PDF for other user's invitee", async () => {

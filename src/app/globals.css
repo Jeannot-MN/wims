@@ -22,6 +22,9 @@
   .input {
     @apply w-full rounded-md border border-ink/15 bg-white px-3 py-2 text-sm focus:border-rose focus:outline-none focus:ring-1 focus:ring-rose;
   }
+  .invite-input {
+    @apply w-full border-0 border-b border-ink/20 bg-transparent px-0 py-2 text-base text-ink placeholder-ink/30 focus:border-wine focus:outline-none focus:ring-0 transition-colors;
+  }
   .label {
     @apply mb-1 block text-sm font-medium text-ink;
   }
@@ -35,4 +38,5 @@
   .badge-declined { @apply badge bg-rose/20 text-rose; }
   .badge-maybe    { @apply badge bg-yellow-100 text-yellow-800; }
   .badge-pending  { @apply badge bg-ink/10 text-ink; }
+  .badge-accom    { @apply badge bg-orchid/20 text-wine; }
 }
