@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { gql, GraphQLRequestError } from "@/web/client/graphql-client";
 import { DEFAULT_COVER_IMAGE_URL } from "@/web/client/default-cover";
+import { DeveloperCredit } from "@/web/client/app-footer";
 
 const Q = `
   query I($token: String!) {
@@ -451,6 +452,10 @@ function Footer({ token, title }: { token: string; title: string }) {
           Download invitation
           <span aria-hidden>↓</span>
         </a>
+
+        <div className="mt-14 border-t border-white/15 pt-6">
+          <DeveloperCredit tone="dark" />
+        </div>
       </div>
     </footer>
   );

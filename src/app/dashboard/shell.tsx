@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { clearToken, loadToken } from "@/web/client/auth-storage";
 import { gql } from "@/web/client/graphql-client";
+import { AppFooter } from "@/web/client/app-footer";
 
 const ME = `query { me { email } }`;
 
@@ -59,6 +60,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
         </div>
       </header>
       <main className="flex-1 max-w-6xl mx-auto w-full px-6 py-8">{children}</main>
+      <AppFooter />
     </div>
   );
 }

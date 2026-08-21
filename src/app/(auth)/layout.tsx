@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { AppFooter } from "@/web/client/app-footer";
 
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -9,6 +10,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
       <main className="flex-1 flex items-center justify-center px-6 py-12">
         <div className="w-full max-w-md">{children}</div>
       </main>
+      <AppFooter />
     </div>
   );
 }
