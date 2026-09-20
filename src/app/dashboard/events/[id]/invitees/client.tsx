@@ -6,14 +6,10 @@ import { gql, GraphQLRequestError } from "@/web/client/graphql-client";
 import { ImportPanel } from "./import-panel";
 
 const LIST = `
-  query L($eventId: ID!, $status: String, $search: String, $accommodation: String, $hasDietary: Boolean) {
-    eventInviteesList(
-      eventId: $eventId, status: $status, search: $search,
-      accommodation: $accommodation, hasDietary: $hasDietary
-    ) {
+  query L($eventId: ID!, $status: String, $search: String) {
+    eventInviteesList(eventId: $eventId, status: $status, search: $search) {
       id invite_token primary_first_name primary_last_name partner_first_name partner_last_name
       email mobile_no rsvp_status is_couple invite_url
-      dietary_restrictions song_requests accommodation_needed
     }
   }
 `;
@@ -24,11 +20,8 @@ const ADD = `
 `;
 const DEL = `mutation D($id: ID!) { deleteInvitee(id: $id) }`;
 const EXPORT = `
-  mutation E($eventId: ID!, $status: String, $search: String, $accommodation: String, $hasDietary: Boolean) {
-    exportInvitees(
-      eventId: $eventId, status: $status, search: $search,
-      accommodation: $accommodation, hasDietary: $hasDietary
-    ) { filename base64 }
+  mutation E($eventId: ID!, $status: String, $search: String) {
+    exportInvitees(eventId: $eventId, status: $status, search: $search) { filename base64 }
   }
 `;
 
@@ -40,14 +33,11 @@ type Row = {
   email: string | null; mobile_no: string | null;
   rsvp_status: string; is_couple: boolean;
   invite_url: string;
-  dietary_restrictions: string; song_requests: string; accommodation_needed: boolean;
 };
 
 export function InviteesClient({ eventId }: { eventId: string }) {
   const [rows, setRows] = useState<Row[]>([]);
   const [statusFilter, setStatusFilter] = useState<string>("all");
-  const [accommodation, setAccommodation] = useState<string>("all");
-  const [hasDietary, setHasDietary] = useState(false);
   const [search, setSearch] = useState("");
   const [showAdd, setShowAdd] = useState(false);
   const [showImport, setShowImport] = useState(false);
@@ -57,8 +47,6 @@ export function InviteesClient({ eventId }: { eventId: string }) {
     eventId,
     status: statusFilter === "all" ? null : statusFilter,
     search: search || null,
-    accommodation: accommodation === "all" ? null : accommodation,
-    hasDietary: hasDietary || null,
   };
 
   const load = async () => {
@@ -72,7 +60,7 @@ export function InviteesClient({ eventId }: { eventId: string }) {
 
   useEffect(() => {
     void load();
-  }, [statusFilter, search, accommodation, hasDietary]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [statusFilter, search]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const onDelete = async (id: string) => {
     if (!confirm("Remove this invitee? Their invite URL will stop working.")) return;
@@ -114,15 +102,6 @@ export function InviteesClient({ eventId }: { eventId: string }) {
           <option value="declined">Declined</option>
           <option value="maybe">Maybe</option>
         </select>
-        <select className="input w-48" value={accommodation} onChange={(e) => setAccommodation(e.target.value)}>
-          <option value="all">All accommodation</option>
-          <option value="yes">Needs help</option>
-          <option value="no">No help needed</option>
-        </select>
-        <label className="flex items-center gap-2 text-sm whitespace-nowrap">
-          <input type="checkbox" checked={hasDietary} onChange={(e) => setHasDietary(e.target.checked)} />
-          Has dietary notes
-        </label>
       </div>
 
       {error && <p className="text-rose text-sm">{error}</p>}
@@ -134,9 +113,6 @@ export function InviteesClient({ eventId }: { eventId: string }) {
               <th className="text-left p-3">Name</th>
               <th className="text-left p-3">Contact</th>
               <th className="text-left p-3">Status</th>
-              <th className="text-left p-3">Dietary</th>
-              <th className="text-left p-3">Song</th>
-              <th className="text-left p-3">Stay</th>
               <th className="text-left p-3">Invite URL</th>
               <th className="text-right p-3">Actions</th>
             </tr>
@@ -144,7 +120,7 @@ export function InviteesClient({ eventId }: { eventId: string }) {
           <tbody>
             {rows.length === 0 ? (
               <tr>
-                <td colSpan={8} className="text-center py-8 text-ink/50">No invitees match these filters.</td>
+                <td colSpan={5} className="text-center py-8 text-ink/50">No invitees match these filters.</td>
               </tr>
             ) : rows.map((r) => (
               <tr key={r.id} className="border-t border-ink/5">
@@ -160,13 +136,6 @@ export function InviteesClient({ eventId }: { eventId: string }) {
                 </td>
                 <td className="p-3">
                   <span className={`badge-${r.rsvp_status}`}>{r.rsvp_status}</span>
-                </td>
-                <td className="p-3"><NoteCell value={r.dietary_restrictions} /></td>
-                <td className="p-3"><NoteCell value={r.song_requests} /></td>
-                <td className="p-3">
-                  {r.accommodation_needed
-                    ? <span className="badge-accom">yes</span>
-                    : <span className="text-ink/30 text-xs">—</span>}
                 </td>
                 <td className="p-3">
                   <button className="text-xs underline text-ink/70" onClick={() => navigator.clipboard.writeText(r.invite_url)}>
@@ -186,16 +155,6 @@ export function InviteesClient({ eventId }: { eventId: string }) {
       {showAdd && <AddInviteeModal eventId={eventId} onClose={() => setShowAdd(false)} onSaved={() => { setShowAdd(false); void load(); }} />}
       {showImport && <ImportPanel eventId={eventId} onClose={() => setShowImport(false)} onCommitted={() => { setShowImport(false); void load(); }} />}
     </div>
-  );
-}
-
-/** Free-text RSVP note, clamped to one line — the full value is on the RSVP details page. */
-function NoteCell({ value }: { value: string }) {
-  if (!value.trim()) return <span className="text-ink/30 text-xs">—</span>;
-  return (
-    <span className="block max-w-[12rem] truncate text-xs text-ink/70" title={value}>
-      {value}
-    </span>
   );
 }
 

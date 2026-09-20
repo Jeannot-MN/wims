@@ -16,7 +16,7 @@ const Q = `
         custom_sections { heading body }
       }
       invitee { primary_first_name primary_last_name partner_first_name partner_last_name is_couple }
-      rsvp { status dietary_restrictions song_requests accommodation_needed }
+      rsvp { status }
       is_rsvp_closed
       deadline
     }
@@ -26,7 +26,7 @@ const Q = `
 const SUBMIT = `
   mutation Sub($token: String!, $input: SubmitRsvpInput!) {
     submitRsvp(token: $token, input: $input) {
-      rsvp { status dietary_restrictions song_requests accommodation_needed }
+      rsvp { status }
       invitee { partner_first_name partner_last_name }
     }
   }
@@ -43,7 +43,7 @@ type Invite = {
     custom_sections: { heading: string; body: string }[];
   };
   invitee: { primary_first_name: string; primary_last_name: string; partner_first_name: string | null; partner_last_name: string | null; is_couple: boolean };
-  rsvp: { status: string; dietary_restrictions: string; song_requests: string; accommodation_needed: boolean };
+  rsvp: { status: string };
   is_rsvp_closed: boolean;
   deadline: string;
 };
@@ -517,9 +517,6 @@ function RsvpForm({ token, invite }: { token: string; invite: Invite }) {
   const [status, setStatus] = useState<string>(
     invite.rsvp.status === "pending" ? "" : invite.rsvp.status,
   );
-  const [dietary, setDietary] = useState(invite.rsvp.dietary_restrictions);
-  const [songs, setSongs] = useState(invite.rsvp.song_requests);
-  const [accommodation, setAccommodation] = useState(invite.rsvp.accommodation_needed);
   const [partnerFirst, setPartnerFirst] = useState(invite.invitee.partner_first_name ?? "");
   const [partnerLast, setPartnerLast] = useState(invite.invitee.partner_last_name ?? "");
   const [busy, setBusy] = useState(false);
@@ -560,17 +557,11 @@ function RsvpForm({ token, invite }: { token: string; invite: Invite }) {
     setBusy(true);
     setError(null);
     setSaved(false);
-    // The extras are only shown when accepting, so don't submit what the guest
-    // couldn't see — otherwise a decline can carry stale notes into the host's lists.
-    const attending = status === "accepted";
     try {
       await gql(SUBMIT, {
         token,
         input: {
           status,
-          dietary_restrictions: attending ? dietary : "",
-          song_requests: attending ? songs : "",
-          accommodation_needed: attending ? accommodation : false,
           partner_first_name: invite.invitee.is_couple ? partnerFirst : null,
           partner_last_name: invite.invitee.is_couple ? partnerLast : null,
         },
@@ -644,42 +635,6 @@ function RsvpForm({ token, invite }: { token: string; invite: Invite }) {
             </Field>
           </div>
         )}
-
-        <div
-          className={`grid transition-all duration-500 ${
-            status === "accepted" ? "grid-rows-[1fr] opacity-100 mt-8" : "grid-rows-[0fr] opacity-0"
-          }`}
-        >
-          <div className="overflow-hidden">
-            <div className="space-y-5">
-              <Field label="Dietary restrictions">
-                <input
-                  className="invite-input"
-                  value={dietary}
-                  onChange={(e) => setDietary(e.target.value)}
-                  placeholder="e.g. vegetarian, gluten-free"
-                />
-              </Field>
-              <Field label="Song requests">
-                <input
-                  className="invite-input"
-                  value={songs}
-                  onChange={(e) => setSongs(e.target.value)}
-                  placeholder="What gets you on the dance floor?"
-                />
-              </Field>
-              <label className="flex items-center gap-3 text-sm text-ink/80">
-                <input
-                  type="checkbox"
-                  checked={accommodation}
-                  onChange={(e) => setAccommodation(e.target.checked)}
-                  className="h-4 w-4 accent-wine"
-                />
-                I&apos;d like help arranging accommodation
-              </label>
-            </div>
-          </div>
-        </div>
 
         {error && (
           <p className="mt-6 text-center text-sm text-wine bg-wine/10 border border-wine/30 rounded-sm py-2 px-4">
