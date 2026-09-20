@@ -48,6 +48,23 @@ type Invite = {
   deadline: string;
 };
 
+/** Hard-coded for this wedding — not part of the event data model. */
+const BANK_DETAILS: { label: string; value: string }[] = [
+  { label: "Bank", value: "FNB / First National Bank" },
+  { label: "Account name", value: "Miss Nyunga N Kayembe" },
+  { label: "Account number", value: "63041228271" },
+];
+
+const DRESS_CODE_IMAGES: string[] = [
+  "/dress-code-1.jpeg",
+  "/dress-code-2.jpeg",
+  "/dress-code-3.jpeg",
+  "/dress-code-4.jpeg",
+  "/dress-code-5.jpeg",
+  "/dress-code-6.jpeg",
+  "/dress-code-7.jpeg",
+];
+
 export function InvitePageClient({ token }: { token: string }) {
   const [invite, setInvite] = useState<Invite | null | "notfound">(null);
 
@@ -108,6 +125,42 @@ function Invitation({ token, invite }: { token: string; invite: Invite }) {
             </blockquote>
           </Reveal>
         )}
+      </Section>
+
+      <Section id="gifts" muted>
+        <Reveal>
+          <SectionHeading eyebrow="With gratitude" title="Gifts" />
+        </Reveal>
+        <Reveal>
+          <div className="mx-auto max-w-2xl rounded-sm border border-ink/10 bg-white/70 px-8 py-12 text-center md:px-14">
+            <p className="text-lg leading-relaxed text-ink/80">
+              For those who may wish to send us their gifts through a bank transfer, we have
+              kindly provided our bank details below for your convenience.
+            </p>
+            <dl className="mx-auto mt-10 max-w-sm text-left">
+              {BANK_DETAILS.map((row) => (
+                <div key={row.label} className="border-t border-ink/10 py-4 first:border-t-0">
+                  <dt className="text-[11px] uppercase tracking-[0.4em] text-wine/70">{row.label}</dt>
+                  <dd className="mt-1.5 font-display text-2xl tabular-nums text-ink">{row.value}</dd>
+                </div>
+              ))}
+            </dl>
+          </div>
+        </Reveal>
+      </Section>
+
+      <Section id="dress-code">
+        <Reveal>
+          <SectionHeading eyebrow="What to wear" title="Dress code" />
+        </Reveal>
+        <Reveal>
+          <p className="-mt-10 mb-12 text-center font-display text-4xl md:text-5xl text-wine">
+            Royal Ascot Bloom
+          </p>
+        </Reveal>
+        <Reveal>
+          <DressCodeSlideshow />
+        </Reveal>
       </Section>
 
       {e.schedule.length > 0 && (
@@ -420,6 +473,98 @@ function Schedule({ items }: { items: Invite["event"]["schedule"] }) {
         </Reveal>
       ))}
     </ol>
+  );
+}
+
+function DressCodeSlideshow() {
+  const count = DRESS_CODE_IMAGES.length;
+  const [index, setIndex] = useState(0);
+  const [paused, setPaused] = useState(false);
+
+  useEffect(() => {
+    if (paused) return;
+    const id = setInterval(() => setIndex((i) => (i + 1) % count), 5000);
+    return () => clearInterval(id);
+  }, [paused, count]);
+
+  // Stepping wraps both ways, so the arrows never dead-end on the first or last slide.
+  const step = (delta: number) => setIndex((i) => (i + delta + count) % count);
+
+  return (
+    <div
+      className="mx-auto max-w-lg"
+      onMouseEnter={() => setPaused(true)}
+      onMouseLeave={() => setPaused(false)}
+    >
+      <div className="relative aspect-[4/5] overflow-hidden rounded-sm border border-ink/10 bg-cream">
+        {DRESS_CODE_IMAGES.map((src, i) => (
+          <div
+            key={src}
+            aria-hidden={i !== index}
+            className={`absolute inset-0 transition-opacity duration-700 ${
+              i === index ? "opacity-100" : "opacity-0"
+            }`}
+          >
+            {/* The photos are a mix of portrait, square and landscape. A blurred copy
+                fills the frame so the real image can sit uncropped on top of it. */}
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={src}
+              alt=""
+              aria-hidden
+              className="absolute inset-0 h-full w-full scale-110 object-cover opacity-40 blur-2xl"
+            />
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={src}
+              alt={`Dress code inspiration ${i + 1} of ${count}`}
+              className="relative h-full w-full object-contain"
+            />
+          </div>
+        ))}
+
+        <SlideArrow label="Previous outfit" onClick={() => step(-1)} side="left" />
+        <SlideArrow label="Next outfit" onClick={() => step(1)} side="right" />
+      </div>
+
+      <div className="mt-5 flex items-center justify-center gap-2.5">
+        {DRESS_CODE_IMAGES.map((src, i) => (
+          <button
+            key={src}
+            type="button"
+            onClick={() => setIndex(i)}
+            aria-label={`Show outfit ${i + 1}`}
+            aria-current={i === index}
+            className={`h-1.5 rounded-full transition-all ${
+              i === index ? "w-7 bg-wine" : "w-1.5 bg-ink/25 hover:bg-ink/40"
+            }`}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function SlideArrow({
+  label,
+  onClick,
+  side,
+}: {
+  label: string;
+  onClick: () => void;
+  side: "left" | "right";
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label={label}
+      className={`absolute top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-white/80 text-xl text-ink backdrop-blur transition-colors hover:bg-white hover:text-wine ${
+        side === "left" ? "left-3" : "right-3"
+      }`}
+    >
+      <span aria-hidden>{side === "left" ? "‹" : "›"}</span>
+    </button>
   );
 }
 
