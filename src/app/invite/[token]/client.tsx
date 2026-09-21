@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { gql, GraphQLRequestError } from "@/web/client/graphql-client";
 import { DEFAULT_COVER_IMAGE_URL } from "@/web/client/default-cover";
 import { DeveloperCredit } from "@/web/client/app-footer";
+import { BANK_DETAILS, GIFTS_INTRO } from "@/domain/invite/wedding-gifts";
 
 const Q = `
   query I($token: String!) {
@@ -47,13 +48,6 @@ type Invite = {
   is_rsvp_closed: boolean;
   deadline: string;
 };
-
-/** Hard-coded for this wedding — not part of the event data model. */
-const BANK_DETAILS: { label: string; value: string }[] = [
-  { label: "Bank", value: "FNB / First National Bank" },
-  { label: "Account name", value: "Miss Nyunga N Kayembe" },
-  { label: "Account number", value: "63041228271" },
-];
 
 const DRESS_CODE_IMAGES: string[] = [
   "/dress-code-1.jpeg",
@@ -133,10 +127,7 @@ function Invitation({ token, invite }: { token: string; invite: Invite }) {
         </Reveal>
         <Reveal>
           <div className="mx-auto max-w-2xl rounded-sm border border-ink/10 bg-white/70 px-8 py-12 text-center md:px-14">
-            <p className="text-lg leading-relaxed text-ink/80">
-              For those who may wish to send us their gifts through a bank transfer, we have
-              kindly provided our bank details below for your convenience.
-            </p>
+            <p className="text-lg leading-relaxed text-ink/80">{GIFTS_INTRO}</p>
             <dl className="mx-auto mt-10 max-w-sm text-left">
               {BANK_DETAILS.map((row) => (
                 <div key={row.label} className="border-t border-ink/10 py-4 first:border-t-0">

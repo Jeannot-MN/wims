@@ -6,7 +6,6 @@ import {
   buildInviteViewModel,
   type DensityPreset,
   type InviteViewModel,
-  type ScheduleBlockVm,
   type SectionVm,
 } from "@/domain/invite/invite-view-model";
 import { DiamondDivider, PAGE_H, PAGE_W, PageArt, palette } from "./floral-art";
@@ -229,10 +228,6 @@ export function DetailsPage({ vm, fontFamily }: { vm: InviteViewModel; fontFamil
           <View style={{ marginBottom: 16 }} />
         )}
 
-        {details.schedule.map((block, i) => (
-          <ScheduleBlock key={`schedule-${i}`} block={block} density={density} />
-        ))}
-
         {details.sections.length ? (
           <View style={{ marginTop: 4, marginBottom: 12 }}>
             <DiamondDivider width={200} />
@@ -244,28 +239,6 @@ export function DetailsPage({ vm, fontFamily }: { vm: InviteViewModel; fontFamil
         ))}
       </View>
     </Page>
-  );
-}
-
-function ScheduleBlock({ block, density }: { block: ScheduleBlockVm; density: DensityPreset }) {
-  const [first, ...rest] = block.lines;
-  return (
-    <View style={{ marginBottom: density.blockGap, alignItems: "center" }} wrap={false}>
-      <Text style={[styles.blockHeading, { fontSize: density.headingFs }]}>
-        {block.timeLabel ? `${block.heading} - ${block.timeLabel}` : block.heading}
-      </Text>
-      {/* Only the heading is tracked caps — descriptions read as the host typed them. */}
-      {first ? (
-        <Text style={{ fontSize: density.bodyFs + 0.5, lineHeight: density.lineHeight, textAlign: "center" }}>
-          {first}
-        </Text>
-      ) : null}
-      {rest.map((line, i) => (
-        <Text key={i} style={{ fontSize: density.bodyFs - 1, lineHeight: density.lineHeight, textAlign: "center", color: palette.inkSoft }}>
-          {line}
-        </Text>
-      ))}
-    </View>
   );
 }
 

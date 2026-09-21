@@ -1,4 +1,5 @@
 import { RsvpDeadlinePolicy } from "@/domain/event/rsvp-deadline-policy";
+import { BANK_DETAILS, GIFTS_INTRO } from "@/domain/invite/wedding-gifts";
 
 /**
  * Turns an event + invitee into the flat shape the invite PDF renders.
@@ -27,12 +28,6 @@ export type InviteGuestInput = {
   partner_first_name: string | null;
   partner_last_name: string | null;
   invite_token: string;
-};
-
-export type ScheduleBlockVm = {
-  heading: string;
-  timeLabel: string | null;
-  lines: string[];
 };
 
 export type SectionRowVm = { label: string; value: string };
@@ -68,13 +63,13 @@ export type InviteViewModel = {
     rsvpSentence: string;
     inviteUrl: string;
     urlFontSize: number;
-    schedule: ScheduleBlockVm[];
     sections: SectionVm[];
   };
   density: DensityPreset;
   estimatedHeight: number;
 };
 
+export const GIFTS_HEADING = "GIFTS";
 export const FAMILIES_LINE = "TOGETHER WITH THEIR FAMILIES";
 export const HONOUR_LINE = "WOULD BE HONOURED BY THE PRESENCE OF";
 export const JOIN_LINE = "TO JOIN THEM IN CELEBRATING THEIR WEDDING ON";
@@ -107,14 +102,12 @@ export function buildInviteViewModel(input: {
 
   const names = parseCoupleNames(event.title);
   const inviteUrl = baseUrl ? `${baseUrl}/invite/${invitee.invite_token}` : "";
-  const schedule = buildSchedule(event, timeZone);
   const sections = buildSections(event);
 
   const details = {
     rsvpSentence: rsvpSentence(policy.effective(event), timeZone),
     inviteUrl,
     urlFontSize: 0, // filled in below, once the density is known
-    schedule,
     sections,
   };
 
@@ -290,7 +283,6 @@ export function urlFontSize(url: string, preferred: number): number {
 export function chooseDensity(details: {
   rsvpSentence: string;
   inviteUrl: string;
-  schedule: ScheduleBlockVm[];
   sections: SectionVm[];
 }): DensityPreset {
   for (const preset of DENSITY_PRESETS) {
@@ -300,7 +292,7 @@ export function chooseDensity(details: {
 }
 
 export function estimateDetailsHeight(
-  details: { rsvpSentence: string; inviteUrl: string; schedule: ScheduleBlockVm[]; sections: SectionVm[] },
+  details: { rsvpSentence: string; inviteUrl: string; sections: SectionVm[] },
   preset: DensityPreset,
 ): number {
   const lineH = preset.bodyFs * preset.lineHeight;
@@ -309,10 +301,6 @@ export function estimateDetailsHeight(
 
   let height = wrapped(details.rsvpSentence) * lineH;
   if (details.inviteUrl) height += urlFontSize(details.inviteUrl, preset.urlFs) * 1.3 + 22;
-
-  for (const block of details.schedule) {
-    height += preset.headingFs * 1.4 + block.lines.length * lineH + preset.blockGap;
-  }
 
   if (details.sections.length) height += 32; // the diamond divider
 
@@ -326,48 +314,35 @@ export function estimateDetailsHeight(
   return height;
 }
 
-function buildSchedule(event: InviteEventInput, timeZone: string): ScheduleBlockVm[] {
-  const items = event.schedule ?? [];
-  if (items.length) {
-    return items.map((item) => ({
-      heading: item.title.trim().toUpperCase() || "SCHEDULE",
-      timeLabel: normaliseClock(item.time),
-      lines: item.description
-        .split(/\r?\n/)
-        .map((l) => l.trim())
-        .filter(Boolean),
-    }));
-  }
-
-  // No schedule: synthesise the ceremony from the event's own time and address.
-  const venue = (event.formatted_address ?? event.address_text ?? "").trim();
-  const comma = venue.indexOf(",");
-  const lines = !venue ? [] : comma === -1 ? [venue] : [venue.slice(0, comma).trim(), venue.slice(comma + 1).trim()];
-
-  return [
-    {
-      heading: "CEREMONY",
-      timeLabel: normaliseClock(fmt(new Date(event.starts_at), timeZone, { hour: "2-digit", minute: "2-digit", hour12: false })),
-      lines,
-    },
-  ];
+/**
+ * The bank-transfer block, hard-coded rather than read from the event. It
+ * leads the details page, where the order of the day used to sit.
+ */
+export function giftsSection(): SectionVm {
+  return {
+    heading: GIFTS_HEADING,
+    paragraphs: [GIFTS_INTRO],
+    rows: BANK_DETAILS.map((row) => ({ ...row })),
+  };
 }
 
 function buildSections(event: InviteEventInput): SectionVm[] {
-  const sections = (event.custom_sections ?? [])
+  const custom = (event.custom_sections ?? [])
     .map((section) => {
       const { paragraphs, rows } = parseSectionBody(section.body ?? "");
       const heading = (section.heading ?? "").trim();
       return { heading: heading ? heading.toUpperCase() : null, paragraphs, rows };
     })
-    .filter((s) => s.heading || s.paragraphs.length || s.rows.length);
+    .filter((s) => s.heading || s.paragraphs.length || s.rows.length)
+    // Hosts who also typed their own gifts section would otherwise get it twice.
+    .filter((s) => s.heading !== GIFTS_HEADING);
 
-  if (sections.length) return sections;
+  if (custom.length) return [giftsSection(), ...custom];
 
-  const fallback: SectionVm[] = [];
+  const fallback: SectionVm[] = [giftsSection()];
   if (event.gift_registry_url.trim()) {
     fallback.push({
-      heading: "GIFTS",
+      heading: "REGISTRY",
       paragraphs: ["We would be delighted if you visited our registry:", event.gift_registry_url.trim()],
       rows: [],
     });
@@ -376,28 +351,6 @@ function buildSections(event: InviteEventInput): SectionVm[] {
     fallback.push({ heading: "DRESS", paragraphs: [event.dress_code.trim()], rows: [] });
   }
   return fallback;
-}
-
-/** "10:00" -> "10:00 AM", "15:30" -> "3:30 PM". Anything unrecognised passes through. */
-export function normaliseClock(time: string): string | null {
-  const t = (time ?? "").trim();
-  if (!t) return null;
-
-  const withMeridiem = t.match(/^(\d{1,2}):(\d{2})\s*([ap])\.?m\.?$/i);
-  if (withMeridiem) {
-    return `${Number(withMeridiem[1])}:${withMeridiem[2]} ${(withMeridiem[3] ?? "").toUpperCase()}M`;
-  }
-
-  const clock = t.match(/^(\d{1,2}):(\d{2})$/);
-  if (clock) {
-    const hour = Number(clock[1]);
-    if (hour > 23) return t;
-    const meridiem = hour < 12 ? "AM" : "PM";
-    const display = hour % 12 === 0 ? 12 : hour % 12;
-    return `${display}:${clock[2]} ${meridiem}`;
-  }
-
-  return t;
 }
 
 function firstToken(s: string): string {
