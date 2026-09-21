@@ -19,8 +19,24 @@ export async function GET(
     status: 200,
     headers: {
       "content-type": "application/pdf",
-      "content-disposition": `inline; filename="${result.filename}"`,
+      "content-disposition": contentDisposition(result.filename),
       "cache-control": "private, no-cache",
     },
   });
+}
+
+/**
+ * `attachment` so the invite saves straight to the guest's downloads instead
+ * of opening a preview tab, where the filename tends to be ignored. The plain
+ * `filename` is an ASCII-only fallback for old clients; `filename*` (RFC 5987)
+ * carries accented guest names intact.
+ */
+function contentDisposition(filename: string): string {
+  const ascii = filename
+    // Decompose first so "Lévêque" degrades to "Leveque" rather than "Lvque".
+    .normalize("NFD")
+    .replace(/\p{Diacritic}/gu, "")
+    .replace(/[^\x20-\x7e]/g, "")
+    .replace(/["\\]/g, "");
+  return `attachment; filename="${ascii}"; filename*=UTF-8''${encodeURIComponent(filename)}`;
 }

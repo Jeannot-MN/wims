@@ -160,23 +160,37 @@ export function parseCoupleNames(title: string): { one: string; two: string | nu
   return { one: one.toUpperCase(), two: two.toUpperCase() };
 }
 
-export function guestDisplayName(invitee: InviteGuestInput): string {
+/**
+ * The guest's name as the host typed it — "Yves & Grace Nkolo".
+ *
+ * Kept in natural case so it can be used where a shouted name would look
+ * wrong (filenames, emails); the PDF cover uppercases it via
+ * {@link guestDisplayName}.
+ */
+export function guestFullName(invitee: InviteGuestInput): string {
   const first = invitee.primary_first_name.trim();
   const last = invitee.primary_last_name.trim();
   const partnerFirst = (invitee.partner_first_name ?? "").trim();
   const partnerLast = (invitee.partner_last_name ?? "").trim();
 
-  if (!first && !partnerFirst) return "OUR HONOURED GUEST";
+  if (!first && !partnerFirst) return "Guest";
 
   if (partnerFirst) {
-    // Shared surname reads better collapsed: "YVES & GRACE NKOLO".
+    // Shared surname reads better collapsed: "Yves & Grace Nkolo".
     if (!partnerLast || partnerLast.toLowerCase() === last.toLowerCase()) {
-      return join([`${first} & ${partnerFirst}`, last]).toUpperCase();
+      return join([`${first} & ${partnerFirst}`, last]);
     }
-    return `${join([first, last])} & ${join([partnerFirst, partnerLast])}`.toUpperCase();
+    return `${join([first, last])} & ${join([partnerFirst, partnerLast])}`;
   }
 
-  return join([first, last]).toUpperCase();
+  return join([first, last]);
+}
+
+export function guestDisplayName(invitee: InviteGuestInput): string {
+  // The nameless fallback is worded differently when it's addressing the guest.
+  const named = invitee.primary_first_name.trim() || (invitee.partner_first_name ?? "").trim();
+  if (!named) return "OUR HONOURED GUEST";
+  return guestFullName(invitee).toUpperCase();
 }
 
 export function dateParts(date: Date, timeZone: string): { weekday: string; day: string; month: string } {

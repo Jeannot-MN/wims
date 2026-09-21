@@ -447,7 +447,7 @@ npm run db:setup
 From your local machine, point `DATABASE_URL` at Neon and run:
 
 ```bash
-DATABASE_URL='postgres://USER:PASS@ep-xxx-pooler.region.aws.neon.tech/wims?sslmode=require' \
+DATABASE_URL='postgresql://neondb_owner:npg_7ParEnjIiG4F@ep-fragrant-glade-b1oa4eu8.c-5.eu-central-1.aws.neon.tech/neondb?sslmode=require' \
   node --env-file=.env --no-warnings ./node_modules/typeorm/cli-ts-node-commonjs.js \
   migration:run -d src/infrastructure/db/datasource.ts
 ```

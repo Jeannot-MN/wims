@@ -3,6 +3,7 @@ import {
   buildInviteViewModel,
   displayNameFontSize,
   guestDisplayName,
+  guestFullName,
   normaliseClock,
   ordinalSuffix,
   parseCoupleNames,
@@ -94,6 +95,46 @@ describe("guestDisplayName", () => {
       }),
     );
     expect(name).toBe("YVES NKOLO & GRACE MOYO");
+  });
+
+  it("addresses a nameless guest", () => {
+    expect(guestDisplayName(makeInvitee({ primary_first_name: "", primary_last_name: "" }))).toBe(
+      "OUR HONOURED GUEST",
+    );
+  });
+});
+
+describe("guestFullName", () => {
+  it("keeps the case the host typed", () => {
+    expect(guestFullName(makeInvitee())).toBe("Jeannot Ngalula");
+  });
+
+  it("collapses a shared surname", () => {
+    const name = guestFullName(
+      makeInvitee({
+        primary_first_name: "Yves",
+        primary_last_name: "Nkolo",
+        partner_first_name: "Grace",
+        partner_last_name: "Nkolo",
+      }),
+    );
+    expect(name).toBe("Yves & Grace Nkolo");
+  });
+
+  it("keeps both surnames when they differ", () => {
+    const name = guestFullName(
+      makeInvitee({
+        primary_first_name: "Yves",
+        primary_last_name: "Nkolo",
+        partner_first_name: "Grace",
+        partner_last_name: "Moyo",
+      }),
+    );
+    expect(name).toBe("Yves Nkolo & Grace Moyo");
+  });
+
+  it("falls back to a neutral label when there is no name at all", () => {
+    expect(guestFullName(makeInvitee({ primary_first_name: "", primary_last_name: "" }))).toBe("Guest");
   });
 });
 

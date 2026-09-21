@@ -72,7 +72,7 @@ describe("Phase 11 — PDF", () => {
       context: CTX,
     });
     const data = expectOk(pdf);
-    expect(data.inviteePdf.filename).toMatch(/\.pdf$/);
+    expect(data.inviteePdf.filename).toBe("Invitation - Carol Brown.pdf");
     const buf = Buffer.from(data.inviteePdf.base64, "base64");
     expect(buf.length).toBeGreaterThan(1000);
     // PDF files always start with %PDF

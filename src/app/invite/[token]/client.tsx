@@ -590,8 +590,7 @@ function Footer({ token, title }: { token: string; title: string }) {
         </p>
         <a
           href={`/invite/${token}/pdf`}
-          target="_blank"
-          rel="noreferrer"
+          download
           className="mt-10 inline-flex items-center gap-2 border border-white/40 px-6 py-3 text-xs uppercase tracking-[0.3em] transition-colors hover:bg-white hover:text-ink"
         >
           Download invitation
