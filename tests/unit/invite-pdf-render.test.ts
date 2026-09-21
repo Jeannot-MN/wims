@@ -69,7 +69,7 @@ describe("wedding invitation PDF", () => {
     expect(raw).toMatch(/Cormorant/);
   });
 
-  it("puts the guest, venues and bank details on the page", async () => {
+  it("puts the guest and the hard-coded bank details on the page", async () => {
     // Text is only greppable with a standard-14 font: embedded TrueType subsets
     // are written as hex glyph indices. This also covers the fallback path.
     const text = extractPdfText(await render(FALLBACK_FONT_FAMILY));
@@ -78,10 +78,9 @@ describe("wedding invitation PDF", () => {
     expect(text).toContain("GRACE");
     expect(text).toContain("JEANNOT NGALULA");
     expect(text).toContain("SATURDAY");
-    expect(text).toContain("CEREMONY - 10:00 AM");
-    expect(text).toContain("RECEPTION - 3:30 PM");
-    expect(text).toContain("Account Number");
-    expect(text).toContain("6312 5399 443");
+    expect(text).toContain("GIFTS");
+    expect(text).toContain("63041228271");
+    expect(text).toContain("Miss Nyunga N Kayembe");
     expect(text).toContain("the 20th of September 2026");
     expect(text).toContain("http://localhost:3000/invite/RY2xrJab7Q");
     // The bare "Code: <token>" line was dropped from the front — the RSVP URL carries the token.
@@ -91,10 +90,14 @@ describe("wedding invitation PDF", () => {
     expect(text).toContain("OCTOBER");
     expect(text).not.toContain("OCTOBER 2026");
 
-    // Schedule descriptions keep the case the host typed; only the heading is caps.
-    expect(text).toContain("Capetown Christian Tabernacle");
-    // extractPdfText doubles the space at text-run boundaries, so match past it.
-    expect(text).toContain("De Villiers Street, Parow Valley");
-    expect(text).not.toContain("CAPETOWN CHRISTIAN TABERNACLE");
+    // The order of the day is no longer part of the invitation.
+    expect(text).not.toContain("CEREMONY");
+    expect(text).not.toContain("RECEPTION");
+    expect(text).not.toContain("Capetown Christian Tabernacle");
+
+    // Custom sections still render, in the host's own case.
+    expect(text).toContain("Account Number");
+    expect(text).toContain("6312 5399 443");
+    expect(text).toContain("envelopes as our preferred form of");
   });
 });

@@ -4,13 +4,13 @@ import {
   displayNameFontSize,
   guestDisplayName,
   guestFullName,
-  normaliseClock,
   ordinalSuffix,
   parseCoupleNames,
   parseSectionBody,
   type InviteEventInput,
   type InviteGuestInput,
 } from "@/domain/invite/invite-view-model";
+import { BANK_DETAILS, GIFTS_INTRO } from "@/domain/invite/wedding-gifts";
 
 function makeEvent(overrides: Partial<InviteEventInput> = {}): InviteEventInput {
   return {
@@ -179,7 +179,7 @@ describe("dates", () => {
 });
 
 describe("schedule", () => {
-  it("maps schedule items into blocks", () => {
+  it("is not rendered on the invite, whatever the host entered", () => {
     const vm = build({
       schedule: [
         {
@@ -189,30 +189,42 @@ describe("schedule", () => {
         },
       ],
     });
-    expect(vm.details.schedule).toHaveLength(1);
-    expect(vm.details.schedule[0]).toMatchObject({
-      heading: "CEREMONY",
-      timeLabel: "10:00 AM",
-      lines: ["Capetown Christian Tabernacle", "39 De Villiers Street, Parow Valley"],
-    });
+    expect(vm.details).not.toHaveProperty("schedule");
+    const text = JSON.stringify(vm);
+    expect(text).not.toContain("CEREMONY");
+    expect(text).not.toContain("Capetown Christian Tabernacle");
+  });
+});
+
+describe("gifts", () => {
+  it("always leads the details page with the hard-coded bank block", () => {
+    const gifts = build().details.sections[0];
+    expect(gifts?.heading).toBe("GIFTS");
+    expect(gifts?.paragraphs).toEqual([GIFTS_INTRO]);
+    expect(gifts?.rows).toEqual(BANK_DETAILS);
   });
 
-  it("converts afternoon times to 12-hour", () => {
-    expect(normaliseClock("15:30")).toBe("3:30 PM");
-    expect(normaliseClock("00:15")).toBe("12:15 AM");
-    expect(normaliseClock("12:00")).toBe("12:00 PM");
-    expect(normaliseClock("")).toBeNull();
-    expect(normaliseClock("Sunset")).toBe("Sunset");
+  it("survives an event with nothing filled in", () => {
+    const vm = build({
+      formatted_address: null,
+      address_text: "",
+      schedule: [],
+      custom_sections: [],
+      dress_code: "",
+      gift_registry_url: "",
+    });
+    expect(vm.details.sections.map((s) => s.heading)).toEqual(["GIFTS"]);
   });
 
-  it("synthesises a ceremony block from the event address when no schedule exists", () => {
-    const vm = build();
-    expect(vm.details.schedule).toHaveLength(1);
-    expect(vm.details.schedule[0]).toMatchObject({
-      heading: "CEREMONY",
-      timeLabel: "8:00 AM", // the event's own start time, 08:00Z
-      lines: ["Kirstenbosch Garden", "Rhodes Drive, Newlands"],
+  it("drops a host's own gifts section rather than printing two", () => {
+    const vm = build({
+      custom_sections: [
+        { heading: "Gifts", body: "Bank: Some Other Bank\nAccount Number: 123456789" },
+        { heading: "Church Address", body: "40 3rd St La Rochelle" },
+      ],
     });
+    expect(vm.details.sections.map((s) => s.heading)).toEqual(["GIFTS", "CHURCH ADDRESS"]);
+    expect(JSON.stringify(vm.details.sections)).not.toContain("Some Other Bank");
   });
 });
 
@@ -251,8 +263,8 @@ describe("parseSectionBody", () => {
 describe("sections", () => {
   it("falls back to the registry and dress code when there are no custom sections", () => {
     const vm = build({ gift_registry_url: "https://registry.example/list", dress_code: "Formal" });
-    expect(vm.details.sections.map((s) => s.heading)).toEqual(["GIFTS", "DRESS"]);
-    expect(vm.details.sections[0]?.paragraphs).toContain("https://registry.example/list");
+    expect(vm.details.sections.map((s) => s.heading)).toEqual(["GIFTS", "REGISTRY", "DRESS"]);
+    expect(vm.details.sections[1]?.paragraphs).toContain("https://registry.example/list");
   });
 
   it("renders a sensible details page for a completely empty event", () => {
@@ -264,8 +276,7 @@ describe("sections", () => {
       dress_code: "",
       gift_registry_url: "",
     });
-    expect(vm.details.sections).toHaveLength(0);
-    expect(vm.details.schedule).toHaveLength(1);
+    expect(vm.details.sections.map((s) => s.heading)).toEqual(["GIFTS"]);
     expect(vm.details.rsvpSentence).not.toBe("");
   });
 });
