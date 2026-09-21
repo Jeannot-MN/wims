@@ -1,5 +1,5 @@
 import { RsvpDeadlinePolicy } from "@/domain/event/rsvp-deadline-policy";
-import { BANK_DETAILS, GIFTS_INTRO } from "@/domain/invite/wedding-gifts";
+import { BANK_DETAILS, GIFTS_INTRO, GUEST_NOTES } from "@/domain/invite/wedding-content";
 
 /**
  * Turns an event + invitee into the flat shape the invite PDF renders.
@@ -326,6 +326,14 @@ export function giftsSection(): SectionVm {
   };
 }
 
+/**
+ * The children and dress-code notes. Untitled, so they read as closing asides
+ * rather than competing with the headed blocks above them.
+ */
+export function noteSections(): SectionVm[] {
+  return GUEST_NOTES.map((note) => ({ heading: null, paragraphs: [note], rows: [] }));
+}
+
 function buildSections(event: InviteEventInput): SectionVm[] {
   const custom = (event.custom_sections ?? [])
     .map((section) => {
@@ -337,20 +345,21 @@ function buildSections(event: InviteEventInput): SectionVm[] {
     // Hosts who also typed their own gifts section would otherwise get it twice.
     .filter((s) => s.heading !== GIFTS_HEADING);
 
-  if (custom.length) return [giftsSection(), ...custom];
+  const sections: SectionVm[] = [giftsSection()];
 
-  const fallback: SectionVm[] = [giftsSection()];
-  if (event.gift_registry_url.trim()) {
-    fallback.push({
+  if (custom.length) {
+    sections.push(...custom);
+  } else if (event.gift_registry_url.trim()) {
+    sections.push({
       heading: "REGISTRY",
       paragraphs: ["We would be delighted if you visited our registry:", event.gift_registry_url.trim()],
       rows: [],
     });
   }
-  if (event.dress_code.trim()) {
-    fallback.push({ heading: "DRESS", paragraphs: [event.dress_code.trim()], rows: [] });
-  }
-  return fallback;
+
+  // The dress code is hard-coded in the notes, so event.dress_code is not read here.
+  sections.push(...noteSections());
+  return sections;
 }
 
 function firstToken(s: string): string {

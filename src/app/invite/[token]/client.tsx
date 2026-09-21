@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { gql, GraphQLRequestError } from "@/web/client/graphql-client";
 import { DEFAULT_COVER_IMAGE_URL } from "@/web/client/default-cover";
 import { DeveloperCredit } from "@/web/client/app-footer";
-import { BANK_DETAILS, GIFTS_INTRO } from "@/domain/invite/wedding-gifts";
+import { BANK_DETAILS, GIFTS_INTRO } from "@/domain/invite/wedding-content";
 
 const Q = `
   query I($token: String!) {

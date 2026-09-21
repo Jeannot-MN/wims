@@ -10,7 +10,7 @@ import {
   type InviteEventInput,
   type InviteGuestInput,
 } from "@/domain/invite/invite-view-model";
-import { BANK_DETAILS, GIFTS_INTRO } from "@/domain/invite/wedding-gifts";
+import { BANK_DETAILS, GIFTS_INTRO, GUEST_NOTES } from "@/domain/invite/wedding-content";
 
 function makeEvent(overrides: Partial<InviteEventInput> = {}): InviteEventInput {
   return {
@@ -204,18 +204,6 @@ describe("gifts", () => {
     expect(gifts?.rows).toEqual(BANK_DETAILS);
   });
 
-  it("survives an event with nothing filled in", () => {
-    const vm = build({
-      formatted_address: null,
-      address_text: "",
-      schedule: [],
-      custom_sections: [],
-      dress_code: "",
-      gift_registry_url: "",
-    });
-    expect(vm.details.sections.map((s) => s.heading)).toEqual(["GIFTS"]);
-  });
-
   it("drops a host's own gifts section rather than printing two", () => {
     const vm = build({
       custom_sections: [
@@ -223,8 +211,23 @@ describe("gifts", () => {
         { heading: "Church Address", body: "40 3rd St La Rochelle" },
       ],
     });
-    expect(vm.details.sections.map((s) => s.heading)).toEqual(["GIFTS", "CHURCH ADDRESS"]);
+    expect(vm.details.sections.map((s) => s.heading)).toEqual(["GIFTS", "CHURCH ADDRESS", null, null]);
     expect(JSON.stringify(vm.details.sections)).not.toContain("Some Other Bank");
+  });
+});
+
+describe("guest notes", () => {
+  it("closes the details page with the children and dress-code notes", () => {
+    const notes = build().details.sections.slice(-2);
+    expect(notes.map((s) => s.heading)).toEqual([null, null]);
+    expect(notes.map((s) => s.paragraphs[0])).toEqual(GUEST_NOTES);
+    expect(GUEST_NOTES[0]).toContain("NO CHILDREN");
+    expect(GUEST_NOTES[1]).toContain("decently and modestly");
+  });
+
+  it("keeps them last, after the host's own sections", () => {
+    const vm = build({ custom_sections: [{ heading: "Church Address", body: "40 3rd St La Rochelle" }] });
+    expect(vm.details.sections.map((s) => s.heading)).toEqual(["GIFTS", "CHURCH ADDRESS", null, null]);
   });
 });
 
@@ -261,10 +264,15 @@ describe("parseSectionBody", () => {
 });
 
 describe("sections", () => {
-  it("falls back to the registry and dress code when there are no custom sections", () => {
-    const vm = build({ gift_registry_url: "https://registry.example/list", dress_code: "Formal" });
-    expect(vm.details.sections.map((s) => s.heading)).toEqual(["GIFTS", "REGISTRY", "DRESS"]);
+  it("falls back to the registry when there are no custom sections", () => {
+    const vm = build({ gift_registry_url: "https://registry.example/list" });
+    expect(vm.details.sections.map((s) => s.heading)).toEqual(["GIFTS", "REGISTRY", null, null]);
     expect(vm.details.sections[1]?.paragraphs).toContain("https://registry.example/list");
+  });
+
+  it("ignores the event's dress code, which the notes now carry", () => {
+    const vm = build({ dress_code: "Strictly black tie" });
+    expect(JSON.stringify(vm.details.sections)).not.toContain("Strictly black tie");
   });
 
   it("renders a sensible details page for a completely empty event", () => {
@@ -276,7 +284,7 @@ describe("sections", () => {
       dress_code: "",
       gift_registry_url: "",
     });
-    expect(vm.details.sections.map((s) => s.heading)).toEqual(["GIFTS"]);
+    expect(vm.details.sections.map((s) => s.heading)).toEqual(["GIFTS", null, null]);
     expect(vm.details.rsvpSentence).not.toBe("");
   });
 });
@@ -309,10 +317,6 @@ describe("view model wiring", () => {
     expect(build().density.key).toBe("comfortable");
 
     const busy = build({
-      schedule: [
-        { time: "10:00", title: "Ceremony", description: "Capetown Christian Tabernacle\n39 De Villiers Street, Parow Valley, Cape Town" },
-        { time: "15:30", title: "Reception", description: "Kirstenbosch National Botanical Garden\nRhodes Drive, Newlands, Cape Town, 7735" },
-      ],
       custom_sections: [
         {
           heading: "",
@@ -326,8 +330,6 @@ describe("view model wiring", () => {
             "Reference: Your Name",
           ].join("\n"),
         },
-        { heading: "", body: "Due to the couple's wishes, regrettably NO CHILDREN will be allowed." },
-        { heading: "", body: "We kindly ask all guests to dress decently and modestly." },
         { heading: "", body: "For more information, please contact\nBr Arthur: +27 79 529 3393\nBr Joel: +27 82 385 8565" },
       ],
     });
