@@ -64,7 +64,7 @@ export const STRINGS = {
     optionDeclineSub: "Cannot make it",
     partnerFirstName: "Partner first name",
     partnerLastName: "Partner last name",
-    emailLabel: "Email address (optional)",
+    emailLabel: "Email address",
     emailHint: "So we can reach you with any updates about the day. We’ll never share it.",
     chooseOne: "Please choose Accept, Maybe, or Decline.",
     submitFailed: "Submit failed",
@@ -137,7 +137,7 @@ export const STRINGS = {
     optionDeclineSub: "Je ne pourrai pas venir",
     partnerFirstName: "Prénom de votre partenaire",
     partnerLastName: "Nom de votre partenaire",
-    emailLabel: "Adresse e-mail (facultatif)",
+    emailLabel: "Adresse e-mail",
     emailHint:
       "Pour pouvoir vous joindre si quelque chose change. Elle ne sera jamais communiquée à des tiers.",
     chooseOne: "Merci de choisir Accepter, Peut-être ou Décliner.",
@@ -189,4 +189,27 @@ export function pickLocalised(
 
 export function isLocale(value: unknown): value is Locale {
   return value === "en" || value === "fr";
+}
+
+/**
+ * The full date line — "Saturday, 23 November 2026" / "Lundi 23 novembre 2026".
+ *
+ * French convention lower-cases weekdays and months, so Intl returns "lundi 23
+ * novembre 2026". On an invitation the opening weekday reads better
+ * capitalised, so lift that first letter; the month stays lower case, which is
+ * still correct French. English already arrives capitalised and is unchanged.
+ */
+export function formatLongDate(date: Date, locale: Locale): string {
+  const formatted = date.toLocaleDateString(DATE_LOCALE[locale], {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
+  return capitaliseFirst(formatted, locale);
+}
+
+export function capitaliseFirst(value: string, locale: Locale): string {
+  if (!value) return value;
+  return value.charAt(0).toLocaleUpperCase(DATE_LOCALE[locale]) + value.slice(1);
 }

@@ -335,7 +335,7 @@ function Hero({
   starts: Date;
   greeting: string;
 }) {
-  const { t, dateLocale } = useInviteI18n();
+  const { t, longDate } = useInviteI18n();
   const cover = event.cover_image_url || DEFAULT_COVER_IMAGE_URL;
   return (
     <header id="top" className="relative isolate min-h-screen overflow-hidden">
@@ -356,12 +356,7 @@ function Hero({
         <div className="animate-fade-up mt-8 flex items-center gap-4 text-white/90">
           <span className="h-px w-12 bg-white/50" />
           <span className="font-display text-lg md:text-xl italic tracking-wide">
-            {starts.toLocaleDateString(dateLocale, {
-              weekday: "long",
-              day: "numeric",
-              month: "long",
-              year: "numeric",
-            })}
+            {longDate(starts)}
           </span>
           <span className="h-px w-12 bg-white/50" />
         </div>
@@ -733,7 +728,7 @@ function Ornament({ className }: { className?: string }) {
 }
 
 function RsvpForm({ token, invite }: { token: string; invite: Invite }) {
-  const { t, dateLocale } = useInviteI18n();
+  const { t, longDate } = useInviteI18n();
   const [status, setStatus] = useState<string>(
     invite.rsvp.status === "pending" ? "" : invite.rsvp.status,
   );
@@ -745,14 +740,8 @@ function RsvpForm({ token, invite }: { token: string; invite: Invite }) {
   const [error, setError] = useState<string | null>(null);
 
   const deadlineLabel = useMemo(
-    () =>
-      new Date(invite.deadline).toLocaleDateString(dateLocale, {
-        weekday: "long",
-        day: "numeric",
-        month: "long",
-        year: "numeric",
-      }),
-    [invite.deadline, dateLocale],
+    () => longDate(new Date(invite.deadline)),
+    [invite.deadline, longDate],
   );
 
   if (invite.is_rsvp_closed) {
@@ -766,6 +755,9 @@ function RsvpForm({ token, invite }: { token: string; invite: Invite }) {
       </Reveal>
     );
   }
+
+  /** Declining guests are never asked for an address, so none is sent for them. */
+  const wantsEmail = status === "accepted" || status === "maybe";
 
   const submit = async (ev: React.FormEvent) => {
     ev.preventDefault();
@@ -783,7 +775,8 @@ function RsvpForm({ token, invite }: { token: string; invite: Invite }) {
           status,
           partner_first_name: invite.invitee.is_couple ? partnerFirst : null,
           partner_last_name: invite.invitee.is_couple ? partnerLast : null,
-          email: email.trim() || null,
+          // Null leaves any address the host already had untouched.
+          email: wantsEmail ? email.trim() || null : null,
         },
       });
       setSaved(true);
@@ -855,20 +848,23 @@ function RsvpForm({ token, invite }: { token: string; invite: Invite }) {
           </div>
         )}
 
-        <div className="mt-8">
-          <Field label={t("emailLabel")}>
-            <input
-              className="invite-input"
-              type="email"
-              autoComplete="email"
-              inputMode="email"
-              placeholder="name@example.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-            />
-          </Field>
-          <p className="mt-2 text-xs text-ink/50">{t("emailHint")}</p>
-        </div>
+        {/* Only guests who are coming (or might) need to hear about the day. */}
+        {wantsEmail && (
+          <div className="mt-8">
+            <Field label={t("emailLabel")}>
+              <input
+                className="invite-input"
+                type="email"
+                autoComplete="email"
+                inputMode="email"
+                placeholder="name@example.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+              />
+            </Field>
+            <p className="mt-2 text-xs text-ink/50">{t("emailHint")}</p>
+          </div>
+        )}
 
         {error && (
           <p className="mt-6 text-center text-sm text-wine bg-wine/10 border border-wine/30 rounded-sm py-2 px-4">

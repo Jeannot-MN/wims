@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import {
   LOCALES,
   STRINGS,
+  capitaliseFirst,
+  formatLongDate,
   isLocale,
   pickLocalised,
   translate,
@@ -70,6 +72,54 @@ describe("pickLocalised", () => {
     expect(pickLocalised("fr", "Ceremony", "   ")).toBe("Ceremony");
     expect(pickLocalised("fr", "Ceremony", null)).toBe("Ceremony");
     expect(pickLocalised("fr", "Ceremony", undefined)).toBe("Ceremony");
+  });
+});
+
+describe("formatLongDate", () => {
+  // A Monday, so the French weekday is unambiguous.
+  const monday = new Date("2026-11-23T10:00:00Z");
+
+  it("capitalises the French weekday", () => {
+    const fr = formatLongDate(monday, "fr");
+    expect(fr.startsWith("Lundi")).toBe(true);
+    expect(fr).not.toContain("lundi");
+  });
+
+  it("leaves the French month in lower case, as French requires", () => {
+    expect(formatLongDate(monday, "fr")).toContain("novembre");
+    expect(formatLongDate(monday, "fr")).not.toContain("Novembre");
+  });
+
+  it("does not disturb English, which is already capitalised", () => {
+    expect(formatLongDate(monday, "en")).toContain("Monday");
+    expect(formatLongDate(monday, "en")).toContain("November");
+  });
+
+  it("includes the day and year in both languages", () => {
+    for (const locale of LOCALES) {
+      const formatted = formatLongDate(monday, locale);
+      expect(formatted).toContain("23");
+      expect(formatted).toContain("2026");
+    }
+  });
+
+  it("capitalises every French weekday, including the accented ones", () => {
+    // 2026-11-23 is a Monday; walk a full week.
+    const expected = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi", "Dimanche"];
+    for (let i = 0; i < 7; i++) {
+      const day = new Date(monday.getTime() + i * 86_400_000);
+      expect(formatLongDate(day, "fr").startsWith(expected[i] as string)).toBe(true);
+    }
+  });
+});
+
+describe("capitaliseFirst", () => {
+  it("survives an empty string", () => {
+    expect(capitaliseFirst("", "fr")).toBe("");
+  });
+
+  it("leaves an already-capitalised string alone", () => {
+    expect(capitaliseFirst("Samedi", "fr")).toBe("Samedi");
   });
 });
 

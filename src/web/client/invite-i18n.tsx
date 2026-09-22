@@ -3,6 +3,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import {
   DATE_LOCALE,
+  formatLongDate,
   isLocale,
   pickLocalised,
   translate,
@@ -19,6 +20,8 @@ type I18n = {
   setLocale: (next: Locale) => void;
   t: (key: StringKey, vars?: Record<string, string | number>) => string;
   pick: (base: string, french: string | null | undefined) => string;
+  /** Weekday-led date line, capitalised for the current language. */
+  longDate: (date: Date) => string;
   dateLocale: string;
 };
 
@@ -53,6 +56,7 @@ export function InviteI18nProvider({ children }: { children: React.ReactNode }) 
       setLocale,
       t: (key, vars) => translate(locale, key, vars),
       pick: (base, french) => pickLocalised(locale, base, french),
+      longDate: (date) => formatLongDate(date, locale),
       dateLocale: DATE_LOCALE[locale],
     }),
     [locale, setLocale],
