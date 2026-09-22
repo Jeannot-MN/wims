@@ -34,7 +34,19 @@ export type SubmitInput = {
   accommodation_needed?: boolean;
   partner_first_name?: string | null;
   partner_last_name?: string | null;
+  email?: string | null;
 };
+
+export class InvalidEmailError extends Error {
+  constructor() {
+    super("That email address does not look right");
+  }
+}
+
+/** Deliberately permissive — we only want to catch obvious typos, not police addresses. */
+export function isPlausibleEmail(value: string): boolean {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(value);
+}
 
 const RATE_LIMIT_PER_MIN = 10;
 const rateBuckets = new Map<string, number[]>();
@@ -102,13 +114,27 @@ export class RsvpService {
     view.rsvp.submitted_at = this.clock.now();
     await rsvpRepo.save(view.rsvp);
 
-    if (input.partner_first_name !== undefined || input.partner_last_name !== undefined) {
+    const touchesInvitee =
+      input.partner_first_name !== undefined ||
+      input.partner_last_name !== undefined ||
+      input.email !== undefined;
+
+    if (touchesInvitee) {
       const inviteeRepo = this.dataSource.getRepository(InviteeEntity);
       if (input.partner_first_name !== undefined) {
         view.invitee.partner_first_name = input.partner_first_name?.trim() || null;
       }
       if (input.partner_last_name !== undefined) {
         view.invitee.partner_last_name = input.partner_last_name?.trim() || null;
+      }
+      if (input.email !== undefined) {
+        const email = input.email?.trim() ?? "";
+        // Guests leave it blank far more often than they clear it on purpose, so
+        // an empty box keeps whatever the host already had on record.
+        if (email) {
+          if (!isPlausibleEmail(email)) throw new InvalidEmailError();
+          view.invitee.email = email;
+        }
       }
       await inviteeRepo.save(view.invitee);
     }

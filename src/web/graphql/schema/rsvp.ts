@@ -2,8 +2,18 @@ import { GraphQLError } from "graphql";
 import { builder } from "../builder";
 import { wrap } from "../utils/errors";
 import { SystemClock } from "@/application/ports/clock";
-import { RsvpService, RsvpClosedError, InvalidTokenError, type InviteView } from "@/application/services/rsvp-service";
-import type { EventEntity } from "@/infrastructure/db/entities/Event";
+import {
+  RsvpService,
+  RsvpClosedError,
+  InvalidTokenError,
+  InvalidEmailError,
+  type InviteView,
+} from "@/application/services/rsvp-service";
+import type {
+  EventEntity,
+  ScheduleItem as ScheduleItemShape,
+  CustomSection as CustomSectionShape,
+} from "@/infrastructure/db/entities/Event";
 import type { InviteeEntity } from "@/infrastructure/db/entities/Invitee";
 import type { RsvpEntity } from "@/infrastructure/db/entities/Rsvp";
 import { RsvpDeadlinePolicy } from "@/domain/event/rsvp-deadline-policy";
@@ -37,28 +47,34 @@ const PublicLocation = builder
   });
 
 const PublicScheduleItem = builder
-  .objectRef<{ time: string; title: string; description: string }>("PublicScheduleItem")
+  .objectRef<ScheduleItemShape>("PublicScheduleItem")
   .implement({
     fields: (t) => ({
       time: t.exposeString("time"),
       title: t.exposeString("title"),
       description: t.exposeString("description"),
+      title_fr: t.string({ resolve: (i) => i.title_fr ?? "" }),
+      description_fr: t.string({ resolve: (i) => i.description_fr ?? "" }),
     }),
   });
 
 const PublicCustomSection = builder
-  .objectRef<{ heading: string; body: string }>("PublicCustomSection")
+  .objectRef<CustomSectionShape>("PublicCustomSection")
   .implement({
     fields: (t) => ({
       heading: t.exposeString("heading"),
       body: t.exposeString("body"),
+      heading_fr: t.string({ resolve: (s) => s.heading_fr ?? "" }),
+      body_fr: t.string({ resolve: (s) => s.body_fr ?? "" }),
     }),
   });
 
 const PublicEvent = builder.objectRef<EventEntity>("PublicEvent").implement({
   fields: (t) => ({
     title: t.exposeString("title"),
+    title_fr: t.exposeString("title_fr"),
     description: t.exposeString("description"),
+    description_fr: t.exposeString("description_fr"),
     starts_at: t.field({ type: "DateTime", resolve: (e) => e.starts_at }),
     ends_at: t.field({ type: "DateTime", nullable: true, resolve: (e) => e.ends_at }),
     location: t.field({
@@ -71,6 +87,7 @@ const PublicEvent = builder.objectRef<EventEntity>("PublicEvent").implement({
       }),
     }),
     dress_code: t.exposeString("dress_code"),
+    dress_code_fr: t.exposeString("dress_code_fr"),
     gift_registry_url: t.exposeString("gift_registry_url"),
     schedule: t.field({ type: [PublicScheduleItem], resolve: (e) => e.schedule ?? [] }),
     custom_sections: t.field({
@@ -88,6 +105,7 @@ const PublicInvitee = builder.objectRef<InviteeEntity>("PublicInvitee").implemen
     primary_last_name: t.exposeString("primary_last_name"),
     partner_first_name: t.exposeString("partner_first_name", { nullable: true }),
     partner_last_name: t.exposeString("partner_last_name", { nullable: true }),
+    email: t.exposeString("email", { nullable: true }),
     is_couple: t.boolean({ resolve: (i) => Boolean(i.partner_first_name) }),
   }),
 });
@@ -120,6 +138,7 @@ const SubmitRsvpInput = builder.inputType("SubmitRsvpInput", {
     accommodation_needed: t.boolean({ required: false }),
     partner_first_name: t.string({ required: false }),
     partner_last_name: t.string({ required: false }),
+    email: t.string({ required: false }),
   }),
 });
 
@@ -160,12 +179,16 @@ builder.mutationField("submitRsvp", (t) =>
               accommodation_needed: args.input.accommodation_needed ?? undefined,
               partner_first_name: args.input.partner_first_name ?? undefined,
               partner_last_name: args.input.partner_last_name ?? undefined,
+              email: args.input.email ?? undefined,
             },
             ctx.requestIp,
           );
         } catch (err) {
           if (err instanceof RsvpClosedError) {
             throw new GraphQLError(err.message, { extensions: { code: "RSVP_CLOSED" } });
+          }
+          if (err instanceof InvalidEmailError) {
+            throw new GraphQLError(err.message, { extensions: { code: "INVALID_EMAIL" } });
           }
           if (err instanceof InvalidTokenError) {
             throw new GraphQLError(err.message, { extensions: { code: "NOT_FOUND" } });

@@ -8,11 +8,11 @@ import { EventForm, type EventFormValues } from "@/web/client/event-form";
 const Q = `
   query Q($id: ID!) {
     event(id: $id) {
-      id title description starts_at ends_at rsvp_deadline_at
+      id title title_fr description description_fr starts_at ends_at rsvp_deadline_at
       location { place_id formatted_address latitude longitude address_text }
-      dress_code gift_registry_url cover_image_url
-      schedule { time title description }
-      custom_sections { heading body }
+      dress_code dress_code_fr gift_registry_url cover_image_url
+      schedule { time title title_fr description description_fr }
+      custom_sections { heading heading_fr body body_fr }
     }
   }
 `;
@@ -34,7 +34,9 @@ export function EditEventClient({ id }: { id: string }) {
       setInitial({
         id: e.id,
         title: e.title,
+        title_fr: e.title_fr ?? "",
         description: e.description,
+        description_fr: e.description_fr ?? "",
         starts_at: toLocalDateTime(e.starts_at),
         ends_at: toLocalDateTime(e.ends_at),
         rsvp_deadline_at: toLocalDateTime(e.rsvp_deadline_at),
@@ -46,10 +48,24 @@ export function EditEventClient({ id }: { id: string }) {
           address_text: e.location.address_text,
         },
         dress_code: e.dress_code,
+        dress_code_fr: e.dress_code_fr ?? "",
         gift_registry_url: e.gift_registry_url,
         cover_image_url: e.cover_image_url,
-        schedule: e.schedule,
-        custom_sections: e.custom_sections,
+        // GraphQL returns __typename-free plain objects; normalise the optional
+        // French keys so every input stays controlled.
+        schedule: (e.schedule ?? []).map((s: Record<string, string>) => ({
+          time: s.time ?? "",
+          title: s.title ?? "",
+          title_fr: s.title_fr ?? "",
+          description: s.description ?? "",
+          description_fr: s.description_fr ?? "",
+        })),
+        custom_sections: (e.custom_sections ?? []).map((c: Record<string, string>) => ({
+          heading: c.heading ?? "",
+          heading_fr: c.heading_fr ?? "",
+          body: c.body ?? "",
+          body_fr: c.body_fr ?? "",
+        })),
       });
     });
   }, [id]);

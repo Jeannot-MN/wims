@@ -8,16 +8,19 @@ import { PlacesAutocomplete, type SelectedPlace } from "./places-autocomplete";
 export type EventFormValues = {
   id?: string;
   title: string;
+  title_fr: string;
   description: string;
+  description_fr: string;
   starts_at: string;
   ends_at: string;
   rsvp_deadline_at: string;
   location: SelectedPlace;
   dress_code: string;
+  dress_code_fr: string;
   gift_registry_url: string;
   cover_image_url: string;
-  schedule: { time: string; title: string; description: string }[];
-  custom_sections: { heading: string; body: string }[];
+  schedule: { time: string; title: string; title_fr: string; description: string; description_fr: string }[];
+  custom_sections: { heading: string; heading_fr: string; body: string; body_fr: string }[];
 };
 
 const CREATE = `
@@ -26,6 +29,13 @@ const CREATE = `
 const UPDATE = `
   mutation Update($id: ID!, $input: EventUpdateInput!) { updateEvent(id: $id, input: $input) { id } }
 `;
+
+/**
+ * French is optional everywhere: a guest reading the invitation in French sees
+ * the original text wherever the translation is blank.
+ */
+const FR_LABEL = "🇫🇷";
+const FR_HINT = "French fields are optional — leave one blank and the English text is shown instead.";
 
 const blankPlace: SelectedPlace = {
   place_id: null,
@@ -38,12 +48,15 @@ const blankPlace: SelectedPlace = {
 export function emptyFormValues(): EventFormValues {
   return {
     title: "",
+    title_fr: "",
     description: "",
+    description_fr: "",
     starts_at: "",
     ends_at: "",
     rsvp_deadline_at: "",
     location: blankPlace,
     dress_code: "",
+    dress_code_fr: "",
     gift_registry_url: "",
     cover_image_url: "",
     schedule: [],
@@ -68,7 +81,9 @@ export function EventForm({ initial, onSaved }: { initial: EventFormValues; onSa
     try {
       const input: Record<string, unknown> = {
         title: v.title,
+        title_fr: v.title_fr,
         description: v.description,
+        description_fr: v.description_fr,
         starts_at: new Date(v.starts_at).toISOString(),
         ends_at: v.ends_at ? new Date(v.ends_at).toISOString() : null,
         rsvp_deadline_at: v.rsvp_deadline_at ? new Date(v.rsvp_deadline_at).toISOString() : null,
@@ -80,6 +95,7 @@ export function EventForm({ initial, onSaved }: { initial: EventFormValues; onSa
           address_text: v.location.address_text || null,
         },
         dress_code: v.dress_code,
+        dress_code_fr: v.dress_code_fr,
         gift_registry_url: v.gift_registry_url,
         cover_image_url: v.cover_image_url,
         schedule: v.schedule,
@@ -100,26 +116,53 @@ export function EventForm({ initial, onSaved }: { initial: EventFormValues; onSa
   };
 
   const addScheduleItem = () =>
-    set("schedule", [...v.schedule, { time: "", title: "", description: "" }]);
+    set("schedule", [
+      ...v.schedule,
+      { time: "", title: "", title_fr: "", description: "", description_fr: "" },
+    ]);
   const removeScheduleItem = (i: number) =>
     set("schedule", v.schedule.filter((_, idx) => idx !== i));
   const addSection = () =>
-    set("custom_sections", [...v.custom_sections, { heading: "", body: "" }]);
+    set("custom_sections", [
+      ...v.custom_sections,
+      { heading: "", heading_fr: "", body: "", body_fr: "" },
+    ]);
   const removeSection = (i: number) =>
     set("custom_sections", v.custom_sections.filter((_, idx) => idx !== i));
+
+  const setScheduleField = (i: number, key: keyof EventFormValues["schedule"][number], value: string) =>
+    set("schedule", v.schedule.map((s, idx) => (idx === i ? { ...s, [key]: value } : s)));
+  const setSectionField = (
+    i: number,
+    key: keyof EventFormValues["custom_sections"][number],
+    value: string,
+  ) => set("custom_sections", v.custom_sections.map((c, idx) => (idx === i ? { ...c, [key]: value } : c)));
 
   return (
     <form className="space-y-8" onSubmit={submit}>
       <section className="card space-y-4">
         <h2 className="font-display text-2xl">Basics</h2>
-        <div>
-          <label className="label" htmlFor="title">Title</label>
-          <input id="title" className="input" required value={v.title} onChange={(e) => set("title", e.target.value)} />
+        <div className="grid gap-3 md:grid-cols-2">
+          <div>
+            <label className="label" htmlFor="title">Title</label>
+            <input id="title" className="input" required value={v.title} onChange={(e) => set("title", e.target.value)} />
+          </div>
+          <div>
+            <label className="label" htmlFor="title_fr">{FR_LABEL} Title</label>
+            <input id="title_fr" className="input" value={v.title_fr} onChange={(e) => set("title_fr", e.target.value)} />
+          </div>
         </div>
-        <div>
-          <label className="label" htmlFor="description">Description</label>
-          <textarea id="description" className="input min-h-[120px]" value={v.description} onChange={(e) => set("description", e.target.value)} />
+        <div className="grid gap-3 md:grid-cols-2">
+          <div>
+            <label className="label" htmlFor="description">Description</label>
+            <textarea id="description" className="input min-h-[120px]" value={v.description} onChange={(e) => set("description", e.target.value)} />
+          </div>
+          <div>
+            <label className="label" htmlFor="description_fr">{FR_LABEL} Description</label>
+            <textarea id="description_fr" className="input min-h-[120px]" value={v.description_fr} onChange={(e) => set("description_fr", e.target.value)} />
+          </div>
         </div>
+        <p className="text-ink/50 text-xs">{FR_HINT}</p>
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label className="label" htmlFor="starts">Starts at</label>
@@ -143,9 +186,15 @@ export function EventForm({ initial, onSaved }: { initial: EventFormValues; onSa
 
       <section className="card space-y-4">
         <h2 className="font-display text-2xl">Details</h2>
-        <div>
-          <label className="label">Dress code</label>
-          <input className="input" value={v.dress_code} onChange={(e) => set("dress_code", e.target.value)} />
+        <div className="grid gap-3 md:grid-cols-2">
+          <div>
+            <label className="label">Dress code</label>
+            <input className="input" value={v.dress_code} onChange={(e) => set("dress_code", e.target.value)} />
+          </div>
+          <div>
+            <label className="label">{FR_LABEL} Dress code</label>
+            <input className="input" value={v.dress_code_fr} onChange={(e) => set("dress_code_fr", e.target.value)} />
+          </div>
         </div>
         <div>
           <label className="label">Gift registry URL</label>
@@ -166,11 +215,18 @@ export function EventForm({ initial, onSaved }: { initial: EventFormValues; onSa
           <p className="text-ink/50 text-sm">No items yet.</p>
         ) : (
           v.schedule.map((it, i) => (
-            <div key={i} className="grid grid-cols-12 gap-2">
-              <input className="input col-span-2" placeholder="15:00" value={it.time} onChange={(e) => set("schedule", v.schedule.map((s, idx) => idx === i ? { ...s, time: e.target.value } : s))} />
-              <input className="input col-span-4" placeholder="Title" value={it.title} onChange={(e) => set("schedule", v.schedule.map((s, idx) => idx === i ? { ...s, title: e.target.value } : s))} />
-              <input className="input col-span-5" placeholder="Description" value={it.description} onChange={(e) => set("schedule", v.schedule.map((s, idx) => idx === i ? { ...s, description: e.target.value } : s))} />
-              <button type="button" className="btn-ghost text-xs col-span-1" onClick={() => removeScheduleItem(i)}>Remove</button>
+            <div key={i} className="space-y-2 border-t border-ink/10 pt-3 first:border-t-0 first:pt-0">
+              <div className="grid grid-cols-12 gap-2">
+                <input className="input col-span-2" placeholder="15:00" value={it.time} onChange={(e) => setScheduleField(i, "time", e.target.value)} />
+                <input className="input col-span-4" placeholder="Title" value={it.title} onChange={(e) => setScheduleField(i, "title", e.target.value)} />
+                <input className="input col-span-5" placeholder="Description" value={it.description} onChange={(e) => setScheduleField(i, "description", e.target.value)} />
+                <button type="button" className="btn-ghost text-xs col-span-1" onClick={() => removeScheduleItem(i)}>Remove</button>
+              </div>
+              <div className="grid grid-cols-12 gap-2">
+                <span className="col-span-2 self-center text-right text-xs text-ink/40">{FR_LABEL}</span>
+                <input className="input col-span-4" placeholder="Titre" value={it.title_fr} onChange={(e) => setScheduleField(i, "title_fr", e.target.value)} />
+                <input className="input col-span-5" placeholder="Description" value={it.description_fr} onChange={(e) => setScheduleField(i, "description_fr", e.target.value)} />
+              </div>
             </div>
           ))
         )}
@@ -185,12 +241,19 @@ export function EventForm({ initial, onSaved }: { initial: EventFormValues; onSa
           <p className="text-ink/50 text-sm">e.g. Accommodation, Travel, FAQ.</p>
         ) : (
           v.custom_sections.map((s, i) => (
-            <div key={i} className="space-y-2">
+            <div key={i} className="space-y-2 border-t border-ink/10 pt-3 first:border-t-0 first:pt-0">
               <div className="flex items-center justify-between">
-                <input className="input" placeholder="Heading" value={s.heading} onChange={(e) => set("custom_sections", v.custom_sections.map((c, idx) => idx === i ? { ...c, heading: e.target.value } : c))} />
+                <input className="input" placeholder="Heading" value={s.heading} onChange={(e) => setSectionField(i, "heading", e.target.value)} />
                 <button type="button" className="btn-ghost text-xs ml-2" onClick={() => removeSection(i)}>Remove</button>
               </div>
-              <textarea className="input min-h-[80px]" placeholder="Body" value={s.body} onChange={(e) => set("custom_sections", v.custom_sections.map((c, idx) => idx === i ? { ...c, body: e.target.value } : c))} />
+              <textarea className="input min-h-[80px]" placeholder="Body" value={s.body} onChange={(e) => setSectionField(i, "body", e.target.value)} />
+              <div className="grid gap-2 md:grid-cols-[auto_1fr] md:items-start">
+                <span className="pt-2 text-xs text-ink/40">{FR_LABEL}</span>
+                <div className="space-y-2">
+                  <input className="input" placeholder="Titre" value={s.heading_fr} onChange={(e) => setSectionField(i, "heading_fr", e.target.value)} />
+                  <textarea className="input min-h-[80px]" placeholder="Texte" value={s.body_fr} onChange={(e) => setSectionField(i, "body_fr", e.target.value)} />
+                </div>
+              </div>
             </div>
           ))
         )}

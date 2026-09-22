@@ -8,6 +8,7 @@ import { EventEntity } from "./entities/Event";
 import { InviteeEntity } from "./entities/Invitee";
 import { RsvpEntity } from "./entities/Rsvp";
 import { InitialSchema1700000000001 } from "./migrations/0001_initial_schema";
+import { FrenchTranslations1700000000002 } from "./migrations/0002_french_translations";
 
 const isProd = process.env.NODE_ENV === "production";
 const databaseUrl = process.env.DATABASE_URL;
@@ -47,7 +48,7 @@ export const AppDataSource = new DataSource({
     InviteeEntity,
     RsvpEntity,
   ],
-  migrations: [InitialSchema1700000000001],
+  migrations: [InitialSchema1700000000001, FrenchTranslations1700000000002],
 });
 
 globalThis.__wims_datasource = AppDataSource;

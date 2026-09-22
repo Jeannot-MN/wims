@@ -1,5 +1,5 @@
 import { RsvpDeadlinePolicy } from "@/domain/event/rsvp-deadline-policy";
-import { BANK_DETAILS, GIFTS_INTRO, GUEST_NOTES } from "@/domain/invite/wedding-content";
+import { BANK_DETAILS, GIFTS_PARAGRAPHS, GUEST_NOTES } from "@/domain/invite/wedding-content";
 
 /**
  * Turns an event + invitee into the flat shape the invite PDF renders.
@@ -321,8 +321,8 @@ export function estimateDetailsHeight(
 export function giftsSection(): SectionVm {
   return {
     heading: GIFTS_HEADING,
-    paragraphs: [GIFTS_INTRO],
-    rows: BANK_DETAILS.map((row) => ({ ...row })),
+    paragraphs: [...GIFTS_PARAGRAPHS.en],
+    rows: BANK_DETAILS.map((row) => ({ label: row.label, value: row.value })),
   };
 }
 
@@ -331,7 +331,7 @@ export function giftsSection(): SectionVm {
  * rather than competing with the headed blocks above them.
  */
 export function noteSections(): SectionVm[] {
-  return GUEST_NOTES.map((note) => ({ heading: null, paragraphs: [note], rows: [] }));
+  return GUEST_NOTES.en.map((note) => ({ heading: null, paragraphs: [note], rows: [] }));
 }
 
 function buildSections(event: InviteEventInput): SectionVm[] {

@@ -3,27 +3,35 @@ import { builder } from "../builder";
 import { wrap } from "../utils/errors";
 import { requireAuth } from "../utils/require-auth";
 import { EventService, NotFoundError, ForbiddenError } from "@/application/services/event-service";
-import { EventEntity } from "@/infrastructure/db/entities/Event";
+import {
+  EventEntity,
+  type ScheduleItem as ScheduleItemShape,
+  type CustomSection as CustomSectionShape,
+} from "@/infrastructure/db/entities/Event";
 import { RsvpDeadlinePolicy } from "@/domain/event/rsvp-deadline-policy";
 
 const deadlinePolicy = new RsvpDeadlinePolicy();
 
 const ScheduleItem = builder
-  .objectRef<{ time: string; title: string; description: string }>("ScheduleItem")
+  .objectRef<ScheduleItemShape>("ScheduleItem")
   .implement({
     fields: (t) => ({
       time: t.exposeString("time"),
       title: t.exposeString("title"),
       description: t.exposeString("description"),
+      title_fr: t.string({ resolve: (i) => i.title_fr ?? "" }),
+      description_fr: t.string({ resolve: (i) => i.description_fr ?? "" }),
     }),
   });
 
 const CustomSection = builder
-  .objectRef<{ heading: string; body: string }>("CustomSection")
+  .objectRef<CustomSectionShape>("CustomSection")
   .implement({
     fields: (t) => ({
       heading: t.exposeString("heading"),
       body: t.exposeString("body"),
+      heading_fr: t.string({ resolve: (s) => s.heading_fr ?? "" }),
+      body_fr: t.string({ resolve: (s) => s.body_fr ?? "" }),
     }),
   });
 
@@ -32,6 +40,8 @@ const ScheduleItemInput = builder.inputType("ScheduleItemInput", {
     time: t.string({ required: true }),
     title: t.string({ required: true }),
     description: t.string({ required: true }),
+    title_fr: t.string({ required: false }),
+    description_fr: t.string({ required: false }),
   }),
 });
 
@@ -39,6 +49,8 @@ const CustomSectionInput = builder.inputType("CustomSectionInput", {
   fields: (t) => ({
     heading: t.string({ required: true }),
     body: t.string({ required: true }),
+    heading_fr: t.string({ required: false }),
+    body_fr: t.string({ required: false }),
   }),
 });
 
@@ -74,7 +86,9 @@ export const Event = builder.objectRef<EventEntity>("Event").implement({
   fields: (t) => ({
     id: t.exposeID("id"),
     title: t.exposeString("title"),
+    title_fr: t.exposeString("title_fr"),
     description: t.exposeString("description"),
+    description_fr: t.exposeString("description_fr"),
     starts_at: t.field({ type: "DateTime", resolve: (e) => e.starts_at }),
     ends_at: t.field({
       type: "DateTime",
@@ -99,6 +113,7 @@ export const Event = builder.objectRef<EventEntity>("Event").implement({
       }),
     }),
     dress_code: t.exposeString("dress_code"),
+    dress_code_fr: t.exposeString("dress_code_fr"),
     gift_registry_url: t.exposeString("gift_registry_url"),
     schedule: t.field({ type: [ScheduleItem], resolve: (e) => e.schedule ?? [] }),
     custom_sections: t.field({
@@ -114,12 +129,15 @@ export const Event = builder.objectRef<EventEntity>("Event").implement({
 const EventCreateInput = builder.inputType("EventCreateInput", {
   fields: (t) => ({
     title: t.string({ required: true }),
+    title_fr: t.string({ required: false }),
     description: t.string({ required: false }),
+    description_fr: t.string({ required: false }),
     starts_at: t.field({ type: "DateTime", required: true }),
     ends_at: t.field({ type: "DateTime", required: false }),
     rsvp_deadline_at: t.field({ type: "DateTime", required: false }),
     location: t.field({ type: LocationInput, required: false }),
     dress_code: t.string({ required: false }),
+    dress_code_fr: t.string({ required: false }),
     gift_registry_url: t.string({ required: false }),
     schedule: t.field({ type: [ScheduleItemInput], required: false }),
     custom_sections: t.field({ type: [CustomSectionInput], required: false }),
@@ -130,12 +148,15 @@ const EventCreateInput = builder.inputType("EventCreateInput", {
 const EventUpdateInput = builder.inputType("EventUpdateInput", {
   fields: (t) => ({
     title: t.string({ required: false }),
+    title_fr: t.string({ required: false }),
     description: t.string({ required: false }),
+    description_fr: t.string({ required: false }),
     starts_at: t.field({ type: "DateTime", required: false }),
     ends_at: t.field({ type: "DateTime", required: false }),
     rsvp_deadline_at: t.field({ type: "DateTime", required: false }),
     location: t.field({ type: LocationInput, required: false }),
     dress_code: t.string({ required: false }),
+    dress_code_fr: t.string({ required: false }),
     gift_registry_url: t.string({ required: false }),
     schedule: t.field({ type: [ScheduleItemInput], required: false }),
     custom_sections: t.field({ type: [CustomSectionInput], required: false }),
@@ -191,12 +212,15 @@ builder.mutationField("createEvent", (t) =>
         const svc = new EventService(ctx.dataSource);
         return await svc.create(user.id, {
           title: args.input.title,
+          title_fr: args.input.title_fr ?? undefined,
           description: args.input.description ?? undefined,
+          description_fr: args.input.description_fr ?? undefined,
           starts_at: args.input.starts_at,
           ends_at: args.input.ends_at ?? null,
           rsvp_deadline_at: args.input.rsvp_deadline_at ?? null,
           location: args.input.location ?? undefined,
           dress_code: args.input.dress_code ?? undefined,
+          dress_code_fr: args.input.dress_code_fr ?? undefined,
           gift_registry_url: args.input.gift_registry_url ?? undefined,
           schedule: args.input.schedule ?? undefined,
           custom_sections: args.input.custom_sections ?? undefined,
@@ -221,8 +245,14 @@ builder.mutationField("updateEvent", (t) =>
             ...(args.input.title !== undefined && args.input.title !== null
               ? { title: args.input.title }
               : {}),
+            ...(args.input.title_fr !== undefined && args.input.title_fr !== null
+              ? { title_fr: args.input.title_fr }
+              : {}),
             ...(args.input.description !== undefined && args.input.description !== null
               ? { description: args.input.description }
+              : {}),
+            ...(args.input.description_fr !== undefined && args.input.description_fr !== null
+              ? { description_fr: args.input.description_fr }
               : {}),
             ...(args.input.starts_at !== undefined && args.input.starts_at !== null
               ? { starts_at: args.input.starts_at }
@@ -236,6 +266,9 @@ builder.mutationField("updateEvent", (t) =>
               : {}),
             ...(args.input.dress_code !== undefined && args.input.dress_code !== null
               ? { dress_code: args.input.dress_code }
+              : {}),
+            ...(args.input.dress_code_fr !== undefined && args.input.dress_code_fr !== null
+              ? { dress_code_fr: args.input.dress_code_fr }
               : {}),
             ...(args.input.gift_registry_url !== undefined && args.input.gift_registry_url !== null
               ? { gift_registry_url: args.input.gift_registry_url }

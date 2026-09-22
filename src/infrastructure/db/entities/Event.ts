@@ -6,11 +6,16 @@ export type ScheduleItem = {
   time: string;
   title: string;
   description: string;
+  /** Optional: rows written before translations existed simply omit these. */
+  title_fr?: string | null;
+  description_fr?: string | null;
 };
 
 export type CustomSection = {
   heading: string;
   body: string;
+  heading_fr?: string | null;
+  body_fr?: string | null;
 };
 
 @Entity({ name: "events" })
@@ -29,7 +34,13 @@ export class EventEntity {
   title!: string;
 
   @Column({ type: "text", default: "" })
+  title_fr!: string;
+
+  @Column({ type: "text", default: "" })
   description!: string;
+
+  @Column({ type: "text", default: "" })
+  description_fr!: string;
 
   @Column({ type: "timestamptz" })
   starts_at!: Date;
@@ -57,6 +68,9 @@ export class EventEntity {
 
   @Column({ type: "text", default: "" })
   dress_code!: string;
+
+  @Column({ type: "text", default: "" })
+  dress_code_fr!: string;
 
   @Column({ type: "text", default: "" })
   gift_registry_url!: string;

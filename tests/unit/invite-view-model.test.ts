@@ -10,7 +10,7 @@ import {
   type InviteEventInput,
   type InviteGuestInput,
 } from "@/domain/invite/invite-view-model";
-import { BANK_DETAILS, GIFTS_INTRO, GUEST_NOTES } from "@/domain/invite/wedding-content";
+import { BANK_DETAILS, GIFTS_PARAGRAPHS, GUEST_NOTES } from "@/domain/invite/wedding-content";
 
 function makeEvent(overrides: Partial<InviteEventInput> = {}): InviteEventInput {
   return {
@@ -200,8 +200,8 @@ describe("gifts", () => {
   it("always leads the details page with the hard-coded bank block", () => {
     const gifts = build().details.sections[0];
     expect(gifts?.heading).toBe("GIFTS");
-    expect(gifts?.paragraphs).toEqual([GIFTS_INTRO]);
-    expect(gifts?.rows).toEqual(BANK_DETAILS);
+    expect(gifts?.paragraphs).toEqual(GIFTS_PARAGRAPHS.en);
+    expect(gifts?.rows).toEqual(BANK_DETAILS.map((r) => ({ label: r.label, value: r.value })));
   });
 
   it("drops a host's own gifts section rather than printing two", () => {
@@ -220,9 +220,11 @@ describe("guest notes", () => {
   it("closes the details page with the children and dress-code notes", () => {
     const notes = build().details.sections.slice(-2);
     expect(notes.map((s) => s.heading)).toEqual([null, null]);
-    expect(notes.map((s) => s.paragraphs[0])).toEqual(GUEST_NOTES);
-    expect(GUEST_NOTES[0]).toContain("NO CHILDREN");
-    expect(GUEST_NOTES[1]).toContain("decently and modestly");
+    expect(notes.map((s) => s.paragraphs[0])).toEqual(GUEST_NOTES.en);
+    expect(GUEST_NOTES.en[0]).toContain("NO CHILDREN");
+    expect(GUEST_NOTES.en[1]).toContain("decently and modestly");
+    // The PDF stays English even though the web invitation can switch.
+    expect(GUEST_NOTES.fr).toHaveLength(GUEST_NOTES.en.length);
   });
 
   it("keeps them last, after the host's own sections", () => {

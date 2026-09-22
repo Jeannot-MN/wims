@@ -165,6 +165,98 @@ describe("Phase 3 — events", () => {
     expect(r.errors?.[0]?.message).toMatch(/authentication/i);
   });
 
+  it("stores and returns the French translations alongside the originals", async () => {
+    const me = await createUser("bilingual@example.com");
+    const CREATE_FR = `
+      mutation Create($input: EventCreateInput!) {
+        createEvent(input: $input) {
+          id title title_fr description description_fr dress_code dress_code_fr
+          schedule { time title title_fr description description_fr }
+          custom_sections { heading heading_fr body body_fr }
+        }
+      }
+    `;
+    const r = await runQuery<{
+      createEvent: {
+        id: string;
+        title_fr: string;
+        description_fr: string;
+        dress_code_fr: string;
+        schedule: { title_fr: string; description_fr: string }[];
+        custom_sections: { heading_fr: string; body_fr: string }[];
+      };
+    }>(CREATE_FR, {
+      variables: {
+        input: {
+          title: "Our Wedding",
+          title_fr: "Notre mariage",
+          description: "Join us!",
+          description_fr: "Rejoignez-nous !",
+          starts_at: futureEventStart().toISOString(),
+          dress_code: "Black tie",
+          dress_code_fr: "Tenue de soirée",
+          schedule: [
+            {
+              time: "15:00",
+              title: "Ceremony",
+              title_fr: "Cérémonie",
+              description: "Begins",
+              description_fr: "Début",
+            },
+          ],
+          custom_sections: [
+            { heading: "Gifts", heading_fr: "Cadeaux", body: "Envelopes", body_fr: "Enveloppes" },
+          ],
+        },
+      },
+      authToken: me.token,
+      context: CTX,
+    });
+    const created = expectOk(r).createEvent;
+    expect(created.title_fr).toBe("Notre mariage");
+    expect(created.description_fr).toBe("Rejoignez-nous !");
+    expect(created.dress_code_fr).toBe("Tenue de soirée");
+    expect(created.schedule[0]?.title_fr).toBe("Cérémonie");
+    expect(created.schedule[0]?.description_fr).toBe("Début");
+    expect(created.custom_sections[0]?.heading_fr).toBe("Cadeaux");
+    expect(created.custom_sections[0]?.body_fr).toBe("Enveloppes");
+  });
+
+  it("defaults the French fields to empty rather than null when untranslated", async () => {
+    const me = await createUser("englishonly@example.com");
+    const CREATE_FR = `
+      mutation Create($input: EventCreateInput!) {
+        createEvent(input: $input) {
+          title_fr description_fr dress_code_fr
+          schedule { title_fr description_fr }
+          custom_sections { heading_fr body_fr }
+        }
+      }
+    `;
+    const r = await runQuery<{
+      createEvent: {
+        title_fr: string;
+        schedule: { title_fr: string }[];
+        custom_sections: { heading_fr: string }[];
+      };
+    }>(CREATE_FR, {
+      variables: {
+        input: {
+          title: "Plain",
+          starts_at: futureEventStart().toISOString(),
+          schedule: [{ time: "15:00", title: "Ceremony", description: "Begins" }],
+          custom_sections: [{ heading: "Travel", body: "By car" }],
+        },
+      },
+      authToken: me.token,
+      context: CTX,
+    });
+    const created = expectOk(r).createEvent;
+    expect(created.title_fr).toBe("");
+    expect(created.schedule[0]?.title_fr).toBe("");
+    expect(created.custom_sections[0]?.heading_fr).toBe("");
+  });
+
   it("rejects RSVP deadline after start", async () => {
     const me = await createUser("badlydated@example.com");
     const r = await runQuery(CREATE_EVENT, {

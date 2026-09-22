@@ -23,12 +23,15 @@ export type LocationInput = {
 
 export type EventInput = {
   title: string;
+  title_fr?: string;
   description?: string;
+  description_fr?: string;
   starts_at: Date;
   ends_at?: Date | null;
   rsvp_deadline_at?: Date | null;
   location?: LocationInput;
   dress_code?: string;
+  dress_code_fr?: string;
   gift_registry_url?: string;
   schedule?: ScheduleItem[];
   custom_sections?: CustomSection[];
@@ -69,7 +72,9 @@ export class EventService {
       owner_user_id: ownerId,
       event_type: "wedding",
       title: input.title.trim(),
+      title_fr: input.title_fr?.trim() ?? "",
       description: input.description ?? "",
+      description_fr: input.description_fr ?? "",
       starts_at: input.starts_at,
       ends_at: input.ends_at ?? null,
       rsvp_deadline_at: input.rsvp_deadline_at ?? null,
@@ -79,6 +84,7 @@ export class EventService {
       latitude: input.location?.latitude ?? null,
       longitude: input.location?.longitude ?? null,
       dress_code: input.dress_code ?? "",
+      dress_code_fr: input.dress_code_fr ?? "",
       gift_registry_url: input.gift_registry_url ?? "",
       schedule: input.schedule ?? [],
       custom_sections: input.custom_sections ?? [],
@@ -94,7 +100,9 @@ export class EventService {
   ): Promise<EventEntity> {
     const event = await this.requireOwned(ownerId, id);
     if (input.title !== undefined) event.title = input.title.trim();
+    if (input.title_fr !== undefined) event.title_fr = input.title_fr.trim();
     if (input.description !== undefined) event.description = input.description;
+    if (input.description_fr !== undefined) event.description_fr = input.description_fr;
     if (input.starts_at !== undefined) event.starts_at = input.starts_at;
     if (input.ends_at !== undefined) event.ends_at = input.ends_at;
     if (input.rsvp_deadline_at !== undefined) event.rsvp_deadline_at = input.rsvp_deadline_at;
@@ -106,6 +114,7 @@ export class EventService {
       event.longitude = input.location.longitude ?? event.longitude;
     }
     if (input.dress_code !== undefined) event.dress_code = input.dress_code;
+    if (input.dress_code_fr !== undefined) event.dress_code_fr = input.dress_code_fr;
     if (input.gift_registry_url !== undefined) event.gift_registry_url = input.gift_registry_url;
     if (input.schedule !== undefined) event.schedule = input.schedule;
     if (input.custom_sections !== undefined) event.custom_sections = input.custom_sections;

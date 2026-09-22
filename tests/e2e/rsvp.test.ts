@@ -33,7 +33,12 @@ const SUBMIT = `
   }
 `;
 
-async function setupInviteeFor(addr: string, deadline?: string, partner?: { first: string; last: string }) {
+async function setupInviteeFor(
+  addr: string,
+  deadline?: string,
+  partner?: { first: string; last: string },
+  opts?: { inviteeEmail?: string | null },
+) {
   await runQuery(SIGNUP, { variables: { email: addr, password: "supersecret1" }, context: CTX });
   const t = email.lastVerificationTokenFor(addr);
   await runQuery(VERIFY, { variables: { token: t! }, context: CTX });
@@ -54,10 +59,11 @@ async function setupInviteeFor(addr: string, deadline?: string, partner?: { firs
     context: CTX,
   });
   const eventId = expectOk(evt).createEvent.id;
+  const inviteeEmail = opts && "inviteeEmail" in opts ? opts.inviteeEmail : "alice@invitee.com";
   const inviteeInput: Record<string, unknown> = {
     primary_first_name: "Alice",
     primary_last_name: "Smith",
-    email: "alice@invitee.com",
+    ...(inviteeEmail ? { email: inviteeEmail } : {}),
   };
   if (partner) {
     inviteeInput.partner_first_name = partner.first;
@@ -181,5 +187,82 @@ describe("Phase 8 + 9 — public invite + RSVP", () => {
     });
     const conf = email.emails.find((e) => e.kind === "rsvp_confirmation");
     expect(conf).toBeTruthy();
+  });
+
+  describe("optional email capture", () => {
+    const SUBMIT_WITH_EMAIL = `
+      mutation Sub($token: String!, $input: SubmitRsvpInput!) {
+        submitRsvp(token: $token, input: $input) {
+          rsvp { status }
+          invitee { email }
+        }
+      }
+    `;
+
+    it("keeps an address the guest supplies while RSVPing", async () => {
+      const { inviteToken } = await setupInviteeFor("rsvp8@example.com", undefined, undefined, {
+        inviteeEmail: null,
+      });
+      const r = await runQuery<{ submitRsvp: { invitee: { email: string | null } } }>(
+        SUBMIT_WITH_EMAIL,
+        {
+          variables: {
+            token: inviteToken,
+            input: { status: "accepted", email: "  Guest@Example.com  " },
+          },
+          context: CTX,
+        },
+      );
+      expect(expectOk(r).submitRsvp.invitee.email).toBe("Guest@Example.com");
+    });
+
+    it("confirms by email to the address just captured", async () => {
+      const { inviteToken } = await setupInviteeFor("rsvp9@example.com", undefined, undefined, {
+        inviteeEmail: null,
+      });
+      email.reset();
+      await runQuery(SUBMIT_WITH_EMAIL, {
+        variables: { token: inviteToken, input: { status: "accepted", email: "new@guest.com" } },
+        context: CTX,
+      });
+      const conf = email.emails.find((e) => e.kind === "rsvp_confirmation");
+      expect(conf?.to).toBe("new@guest.com");
+    });
+
+    it("rejects an address that cannot be one", async () => {
+      const { inviteToken } = await setupInviteeFor("rsvp10@example.com", undefined, undefined, {
+        inviteeEmail: null,
+      });
+      const r = await runQuery(SUBMIT_WITH_EMAIL, {
+        variables: { token: inviteToken, input: { status: "accepted", email: "not-an-email" } },
+        context: CTX,
+      });
+      expect((r.errors?.[0]?.extensions as { code?: string })?.code).toBe("INVALID_EMAIL");
+    });
+
+    it("leaves a blank box alone rather than wiping what the host had", async () => {
+      const { inviteToken } = await setupInviteeFor("rsvp11@example.com");
+      const r = await runQuery<{ submitRsvp: { invitee: { email: string | null } } }>(
+        SUBMIT_WITH_EMAIL,
+        {
+          variables: { token: inviteToken, input: { status: "accepted", email: "" } },
+          context: CTX,
+        },
+      );
+      expect(expectOk(r).submitRsvp.invitee.email).toBe("alice@invitee.com");
+    });
+
+    it("is genuinely optional — omitting it still submits", async () => {
+      const { inviteToken } = await setupInviteeFor("rsvp12@example.com", undefined, undefined, {
+        inviteeEmail: null,
+      });
+      const r = await runQuery<{ submitRsvp: { rsvp: { status: string }; invitee: { email: string | null } } }>(
+        SUBMIT_WITH_EMAIL,
+        { variables: { token: inviteToken, input: { status: "declined" } }, context: CTX },
+      );
+      const data = expectOk(r);
+      expect(data.submitRsvp.rsvp.status).toBe("declined");
+      expect(data.submitRsvp.invitee.email).toBeNull();
+    });
   });
 });
