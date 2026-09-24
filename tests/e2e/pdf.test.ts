@@ -47,7 +47,7 @@ describe("Phase 11 — PDF", () => {
           ],
           custom_sections: [
             { heading: "Gifts", body: "Envelopes are our preferred gift.\nBank: FNB\nAccount Number: 6312 5399 443" },
-            { heading: "", body: "Regrettably no children." },
+            { heading: "", body: "Kindly arrive fifteen minutes early." },
           ],
         },
       },

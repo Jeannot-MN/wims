@@ -211,25 +211,24 @@ describe("gifts", () => {
         { heading: "Church Address", body: "40 3rd St La Rochelle" },
       ],
     });
-    expect(vm.details.sections.map((s) => s.heading)).toEqual(["GIFTS", "CHURCH ADDRESS", null, null]);
+    expect(vm.details.sections.map((s) => s.heading)).toEqual(["GIFTS", "CHURCH ADDRESS", null]);
     expect(JSON.stringify(vm.details.sections)).not.toContain("Some Other Bank");
   });
 });
 
 describe("guest notes", () => {
-  it("closes the details page with the children and dress-code notes", () => {
-    const notes = build().details.sections.slice(-2);
-    expect(notes.map((s) => s.heading)).toEqual([null, null]);
+  it("closes the details page with the dress-code note", () => {
+    const notes = build().details.sections.slice(-1);
+    expect(notes.map((s) => s.heading)).toEqual([null]);
     expect(notes.map((s) => s.paragraphs[0])).toEqual(GUEST_NOTES.en);
-    expect(GUEST_NOTES.en[0]).toContain("NO CHILDREN");
-    expect(GUEST_NOTES.en[1]).toContain("decently and modestly");
+    expect(GUEST_NOTES.en[0]).toContain("decently and modestly");
     // The PDF stays English even though the web invitation can switch.
     expect(GUEST_NOTES.fr).toHaveLength(GUEST_NOTES.en.length);
   });
 
   it("keeps them last, after the host's own sections", () => {
     const vm = build({ custom_sections: [{ heading: "Church Address", body: "40 3rd St La Rochelle" }] });
-    expect(vm.details.sections.map((s) => s.heading)).toEqual(["GIFTS", "CHURCH ADDRESS", null, null]);
+    expect(vm.details.sections.map((s) => s.heading)).toEqual(["GIFTS", "CHURCH ADDRESS", null]);
   });
 });
 
@@ -268,7 +267,7 @@ describe("parseSectionBody", () => {
 describe("sections", () => {
   it("falls back to the registry when there are no custom sections", () => {
     const vm = build({ gift_registry_url: "https://registry.example/list" });
-    expect(vm.details.sections.map((s) => s.heading)).toEqual(["GIFTS", "REGISTRY", null, null]);
+    expect(vm.details.sections.map((s) => s.heading)).toEqual(["GIFTS", "REGISTRY", null]);
     expect(vm.details.sections[1]?.paragraphs).toContain("https://registry.example/list");
   });
 
@@ -286,7 +285,7 @@ describe("sections", () => {
       dress_code: "",
       gift_registry_url: "",
     });
-    expect(vm.details.sections.map((s) => s.heading)).toEqual(["GIFTS", null, null]);
+    expect(vm.details.sections.map((s) => s.heading)).toEqual(["GIFTS", null]);
     expect(vm.details.rsvpSentence).not.toBe("");
   });
 });

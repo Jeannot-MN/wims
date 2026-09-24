@@ -252,6 +252,20 @@ describe("Phase 8 + 9 — public invite + RSVP", () => {
       expect(expectOk(r).submitRsvp.invitee.email).toBe("alice@invitee.com");
     });
 
+    it("keeps a stored address when a guest later declines", async () => {
+      // The form hides the email box on "decline" and sends null; that must not
+      // erase an address the host already had on record.
+      const { inviteToken } = await setupInviteeFor("rsvp13@example.com");
+      const r = await runQuery<{ submitRsvp: { invitee: { email: string | null } } }>(
+        SUBMIT_WITH_EMAIL,
+        {
+          variables: { token: inviteToken, input: { status: "declined", email: null } },
+          context: CTX,
+        },
+      );
+      expect(expectOk(r).submitRsvp.invitee.email).toBe("alice@invitee.com");
+    });
+
     it("is genuinely optional — omitting it still submits", async () => {
       const { inviteToken } = await setupInviteeFor("rsvp12@example.com", undefined, undefined, {
         inviteeEmail: null,

@@ -17,20 +17,28 @@ export const GIFTS_PARAGRAPHS = {
   ],
 };
 
-export const BANK_DETAILS: { label: string; label_fr: string; value: string }[] = [
+export const BANK_DETAILS: {
+  label: string;
+  label_fr: string;
+  value: string;
+}[] = [
   { label: "Bank", label_fr: "Banque", value: "FNB / First National Bank" },
-  { label: "Account name", label_fr: "Titulaire du compte", value: "Miss Nyunga N Kayembe" },
-  { label: "Account number", label_fr: "Numéro de compte", value: "63041228271" },
+  {
+    label: "Account name",
+    label_fr: "Titulaire du compte",
+    value: "Miss Nyunga N Kayembe",
+  },
+  {
+    label: "Account number",
+    label_fr: "Numéro de compte",
+    value: "63041228271",
+  },
 ];
 
 /** Closing notes to guests, printed untitled at the foot of the details page. */
 export const GUEST_NOTES = {
-  en: [
-    "Due to the couple’s wishes, regrettably NO CHILDREN will be allowed.",
-    "We kindly ask all guests to dress decently and modestly.",
-  ],
+  en: ["We kindly ask all guests to dress decently and modestly."],
   fr: [
-    "Conformément aux souhaits des mariés, nous ne pourrons malheureusement pas accueillir d’ENFANTS.",
     "Nous prions tous les invités de s’habiller de manière décente et modeste.",
   ],
 };

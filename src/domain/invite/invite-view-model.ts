@@ -327,8 +327,8 @@ export function giftsSection(): SectionVm {
 }
 
 /**
- * The children and dress-code notes. Untitled, so they read as closing asides
- * rather than competing with the headed blocks above them.
+ * The dress-code note. Untitled, so it reads as a closing aside rather than
+ * competing with the headed blocks above it.
  */
 export function noteSections(): SectionVm[] {
   return GUEST_NOTES.en.map((note) => ({ heading: null, paragraphs: [note], rows: [] }));
